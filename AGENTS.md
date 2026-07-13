@@ -25,6 +25,10 @@ When implementing from a selected generated mock, treat that image as the source
 - Emotion Index is a six-topic, 24-entry scientific knowledge index sourced from the local literature map. It does not link directly to meditation audio.
 - Burn has persistent typed and handwriting modes. Both require explicit ignition; IME composition and long-form typing must never race an automatic timer.
 - Mobile-web compatibility is a first-class constraint: support 320–430px phones, long-screen devices, phone landscape, safe areas, dynamic browser chrome, virtual keyboards, reduced motion/transparency, low-power devices and audio byte-range playback. Preserve system edge gestures and keep all critical actions directly tappable.
+- Scene selection and meditation share the same compact secondary-page top rhythm. Meditation must show its complete closed or expanded control state within one viewport on common phone portrait and landscape sizes, with no vertical scrolling.
+- Meditation copy rotates by equal audio-progress segments using an interruptible crossfade. Its breathing surface slowly shifts between system gray and the restrained brand orange, with a reduced-motion fallback.
+- Canvas state names use the narrative serif stack. Selected subtitles use dedicated short copy and remain on one readable line inside a taller tonal selection surface.
+- Burn typing defaults to a subtle fixed writing surface with a fixed start position. Settings can switch it to the existing free-placement behavior; handwriting is unaffected.
 
 - Primary visual source: `design/final-canvas-target.png`.
 - Keep the reference's quiet monochrome soft-control material, circular selector, generous whitespace, fine strokes, subtle ambient elevation, and restrained 12-16px radii.

@@ -21,4 +21,9 @@ describe("state taxonomy", () => {
     expect(new Set(states.map((state) => state.title)).size).toBe(6);
     expect(states.every((state) => state.term && state.description && state.scenes.length === 6)).toBe(true);
   });
+
+  it("provides compact Canvas copy and rotating meditation copy for every state", () => {
+    expect(states.every((state) => state.shortDescription && state.shortDescription.length <= 20)).toBe(true);
+    expect(states.every((state) => state.affirmations?.length >= 4 && state.affirmations.includes(state.affirmation))).toBe(true);
+  });
 });

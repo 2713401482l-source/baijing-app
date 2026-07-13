@@ -51,6 +51,7 @@ function useAppData() {
     ambienceVolume: 0.42,
     weather: false,
     fullscreen: false,
+    burnInputLayout: "fixed",
   });
   return { favorites, setFavorites, records, setRecords, settings, setSettings };
 }
@@ -223,7 +224,7 @@ function CanvasPage() {
 
   return (
     <main className="screen canvas-screen">
-      <TopLevelIntro title={["此刻，你更接近", "哪种状态？"]} subtitle="不必判断得很准确，只选最接近的感受。" section="状态调整" />
+      <TopLevelIntro title={["此刻的感受", "更接近哪一种？"]} subtitle="不必判断得很准确，只选最接近的感受。" section="状态调整" />
 
       <section className="state-selector vertical" aria-label="选择当前状态">
         <div className="state-list" role="listbox" aria-label="六种状态" aria-activedescendant={`state-${selected.id}`}>
@@ -238,7 +239,7 @@ function CanvasPage() {
               onClick={() => selectedIndex === index ? navigate(`/states/${state.id}`) : setSelectedIndex(index)}
             >
               <span>{state.title}</span>
-              {selectedIndex === index && <small>{state.description}</small>}
+              {selectedIndex === index && <small>{state.shortDescription ?? state.description}</small>}
             </button>
           ))}
         </div>
@@ -353,6 +354,8 @@ function MeditationPage() {
   const [controlActivity, setControlActivity] = useState(0);
   const hideControlsRef = useRef(null);
   const reduceMotion = useReducedMotion();
+  const affirmationLines = state.affirmations?.length ? state.affirmations : [state.affirmation];
+  const affirmationIndex = Math.min(affirmationLines.length - 1, Math.floor((audio.progress / 100) * affirmationLines.length));
 
   useEffect(() => {
     if (audio.progress >= 99.8) navigate(`/completion/${state.id}`);
@@ -378,8 +381,19 @@ function MeditationPage() {
         <span>{Math.max(1, Math.ceil((audio.duration * (1 - audio.progress / 100)) / 60))} 分钟</span>
       </div>
       <button className="affirmation-stage" disabled={audio.loading} aria-busy={audio.loading} onClick={() => audio.playing ? audio.pause() : audio.play()} aria-label={audio.loading ? "音频正在准备" : audio.playing ? "暂停引导" : "播放引导"}>
-        <span className={`breath-orb ${audio.playing && settings.breathing ? "is-breathing" : ""}`} aria-hidden="true" />
-        <p>{state.affirmation}</p>
+        <span className="affirmation-visual">
+          <span className={`breath-orb ${audio.playing && settings.breathing ? "is-breathing" : ""}`} aria-hidden="true" />
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.p
+              key={`${state.id}-${affirmationIndex}`}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 5, filter: "blur(3px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4, filter: "blur(2px)" }}
+              transition={{ duration: reduceMotion ? 0.12 : 0.72, ease: [0.22, 1, 0.36, 1] }}
+              aria-live="polite"
+            >{affirmationLines[affirmationIndex]}</motion.p>
+          </AnimatePresence>
+        </span>
         <span className="tap-hint">轻触{audio.playing ? "暂停" : "继续"}</span>
       </button>
       <div className="progress-track" aria-label={`播放进度 ${Math.round(audio.progress)}%`}><span style={{ width: `${audio.progress}%` }} /></div>
@@ -531,6 +545,7 @@ function HandwritingBurn({ burning, onContent, onBurnComplete }) {
 }
 
 function BurnPage() {
+  const { settings } = useData();
   const [mode, setMode] = useState("type");
   const [draft, setDraft] = useState("");
   const [embers, setEmbers] = useState([]);
@@ -549,18 +564,23 @@ function BurnPage() {
     setDraft("");
     window.setTimeout(() => { setEmbers([]); setBurning(false); }, 3000);
   };
+  const freePlacement = settings.burnInputLayout === "free";
   const placeCursor = (event) => {
     if (mode !== "type" || draft || burning || event.target.closest("button")) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    setAnchor({ x: Math.max(12, Math.min(rect.width - 180, event.clientX - rect.left)), y: Math.max(18, Math.min(rect.height - 120, event.clientY - rect.top)) });
+    if (freePlacement) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setAnchor({ x: Math.max(12, Math.min(rect.width - 180, event.clientX - rect.left)), y: Math.max(18, Math.min(rect.height - 120, event.clientY - rect.top)) });
+    } else {
+      setAnchor({ x: 24, y: 34 });
+    }
     requestAnimationFrame(() => inputRef.current?.focus());
   };
   return (
     <main className="screen burn-screen">
-      <TopLevelIntro title={["让它暂时", "离开脑海。"]} subtitle="不会保存，也不会发送。" section="阅后即焚" />
+      <TopLevelIntro title={["写下再放下", "让它化作余烬"]} subtitle="不会保存，也不会发送。" section="阅后即焚" />
       <div className="burn-mode-switch" role="tablist" aria-label="输入方式"><button role="tab" aria-selected={mode === "type"} onClick={() => { setMode("type"); setBurning(false); setDrawingPresent(false); }}>键入</button><button role="tab" aria-selected={mode === "draw"} onClick={() => { setMode("draw"); setBurning(false); setDrawingPresent(false); }}>手写</button></div>
-      <div className={`burn-canvas ${burning ? "is-burning" : ""}`} onPointerDown={placeCursor}>
-        {mode === "type" && !draft && !burning && <span className="burn-placeholder" aria-hidden="true">轻触任意位置，写下一句。</span>}
+      <div className={`burn-canvas ${burning ? "is-burning" : ""} ${freePlacement ? "is-free-placement" : "is-fixed-placement"}`} onPointerDown={placeCursor}>
+        {mode === "type" && !draft && !burning && <span className="burn-placeholder" aria-hidden="true">{freePlacement ? "轻触任意位置，写下一句。" : "从这里，写下想放下的内容。"}</span>}
         {mode === "type" ? <textarea ref={inputRef} value={draft} inputMode="text" onChange={(event) => setDraft(event.target.value)} aria-label="写下想放下的内容" autoComplete="off" spellCheck="false" placeholder="轻触任意位置，写下一句。" style={{ "--burn-x": `${anchor.x}px`, "--burn-y": `${anchor.y}px` }} /> : <HandwritingBurn burning={burning} onContent={setDrawingPresent} onBurnComplete={() => { setBurning(false); setDrawingPresent(false); }} />}
         {embers.map((ember) => <p className="burn-ember" key={ember.id} style={{ left: anchor.x, top: anchor.y }}>{ember.chars.map((item, index) => <span key={`${item.char}-${index}`} style={{ animationDelay: `${item.delay}ms`, "--drift-x": `${item.driftX}px`, "--drift-y": `${item.driftY}px`, "--burn-rotate": `${item.rotate}deg` }}>{item.char}</span>)}</p>)}
       </div>
@@ -709,6 +729,12 @@ function SettingsPage() {
       </section>
       <section className="settings-group">
         <h2>体验</h2>
+        <div className="setting-choice-row">
+          <div><strong>键入位置</strong><span>阅后即焚中的文字起点</span></div>
+          <div className="segmented-control compact" aria-label="阅后即焚键入位置">
+            {[["fixed", "固定区域"], ["free", "自由落字"]].map(([value, label]) => <button key={value} className={(settings.burnInputLayout ?? "fixed") === value ? "is-selected" : ""} onClick={() => update("burnInputLayout", value)}>{label}</button>)}
+          </div>
+        </div>
         <div className="setting-row"><div><strong>全屏模式</strong><span>隐藏浏览器界面，更专注地体验</span></div><Toggle checked={fullscreenActive} onChange={toggleFullscreen} label="全屏模式" /></div>
         {[["breathing", "呼吸提示"], ["haptics", "轻触反馈"], ["reducedEffects", "降低动效"], ["weather", "盲盒使用天气信息"], ["recordsEnabled", "保存体验记录"]].map(([key, label]) => <div className="setting-row" key={key}><div><strong>{label}</strong><span>{key === "recordsEnabled" ? "默认关闭，只记录完成信息" : key === "weather" ? "需要时再请求定位权限" : "可随时调整"}</span></div><Toggle checked={settings[key]} onChange={(value) => update(key, value)} label={label} /></div>)}
       </section>

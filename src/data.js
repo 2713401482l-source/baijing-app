@@ -4,7 +4,14 @@ export const states = [
     title: "反复纠结",
     term: "思维反刍",
     description: "已经发生的事情、表达或感受，仍在脑中反复出现。",
+    shortDescription: "发生过的事，仍在脑中反复出现。",
     affirmation: "这件事可以先停在这里，我不必现在得到答案。",
+    affirmations: [
+      "这件事可以先停在这里，我不必现在得到答案。",
+      "念头再次回来，也不需要立刻跟随。",
+      "让这一段反复，慢慢离我远一点。",
+      "此刻，只把注意力留给一次呼吸。",
+    ],
     audio: "/audio/rumination.mp3",
     scenes: [
       "一段对话总在脑中重播。",
@@ -20,7 +27,14 @@ export const states = [
     title: "对未来没底",
     term: "预期担忧",
     description: "面对尚未确定的结果或即将发生的事情，很难把注意力从未来拉回来。",
+    shortDescription: "注意力很难从还未发生的事上回来。",
     affirmation: "未来还没有发生，此刻我只需要照顾下一步。",
+    affirmations: [
+      "未来还没有发生，此刻我只需要照顾下一步。",
+      "不确定可以暂时存在，不必现在填满。",
+      "把注意力带回身体正在接触的地方。",
+      "下一步很小，也已经足够。",
+    ],
     audio: "/audio/anticipation.mp3",
     scenes: [
       "考试、面试或汇报前没底。",
@@ -36,7 +50,14 @@ export const states = [
     title: "思绪过载",
     term: "认知与任务过载",
     description: "事情、信息和要求同时占用注意力，难以排序、选择或判断下一步。",
+    shortDescription: "信息与任务同时挤占着注意力。",
     affirmation: "我不需要同时处理一切，只留下眼前的一件事。",
+    affirmations: [
+      "我不需要同时处理一切，只留下眼前的一件事。",
+      "没有被处理的内容，可以先放在一旁。",
+      "先让脑海里的声音，彼此离远一点。",
+      "现在，只需要辨认最小的一步。",
+    ],
     audio: "/audio/overload.mp3",
     scenes: [
       "事情堆在一起，不知道先做什么。",
@@ -52,7 +73,14 @@ export const states = [
     title: "难以启动",
     term: "行动启动受阻",
     description: "当前可能仍有一定精力，但任务没有真正进入执行。",
+    shortDescription: "有一些精力，却迟迟没有真正开始。",
     affirmation: "开始可以很小，小到只需要一次呼吸和一个动作。",
+    affirmations: [
+      "开始可以很小，小到只需要一次呼吸和一个动作。",
+      "不必完成全部，只靠近第一个动作。",
+      "允许身体用自己的速度，从停住走向开始。",
+      "做一点点，也是在改变此刻的位置。",
+    ],
     audio: "/audio/blocked.mp3",
     scenes: [
       "一直在准备，却没有进入执行。",
@@ -68,7 +96,14 @@ export const states = [
     title: "情绪未平",
     term: "情绪余波",
     description: "事件已经结束或暂时停止，但情绪或身体反应仍在影响现在。",
+    shortDescription: "事情停下了，情绪和身体仍有余波。",
     affirmation: "事情停下了，我的身体也可以慢慢停下来。",
+    affirmations: [
+      "事情停下了，我的身体也可以慢慢停下来。",
+      "余下的感受，不需要被催着离开。",
+      "每一次呼气，都给身体多一点空间。",
+      "我可以等这一阵余波，慢慢经过。",
+    ],
     audio: "/audio/aftershock.mp3",
     scenes: [
       "没得到期待的回应，很失落。",
@@ -84,7 +119,14 @@ export const states = [
     title: "精力不足",
     term: "可用能量不足",
     description: "身体、注意力或动机资源不足，当前需要先判断是恢复，还是轻量启动。",
+    shortDescription: "身体、注意或动机暂时不够用。",
     affirmation: "能量不足不是失败，我可以选择恢复，也可以只走一小步。",
+    affirmations: [
+      "能量不足不是失败，我可以选择恢复，也可以只走一小步。",
+      "先感受身体，而不是要求它立刻振作。",
+      "恢复与前进，都可以从很小的动作开始。",
+      "此刻能做到多少，就先允许多少。",
+    ],
     audio: "/audio/low-energy.mp3",
     scenes: [
       "刚醒来，状态还没有启动。",
