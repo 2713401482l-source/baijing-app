@@ -354,6 +354,7 @@ function MeditationPage() {
   const [controlActivity, setControlActivity] = useState(0);
   const hideControlsRef = useRef(null);
   const reduceMotion = useReducedMotion();
+  const controlLayoutTransition = reduceMotion ? { duration: 0.01 } : { duration: 0.38, ease: [0.22, 1, 0.36, 1] };
   const affirmationLines = state.affirmations?.length ? state.affirmations : [state.affirmation];
   const affirmationIndex = Math.min(affirmationLines.length - 1, Math.floor((audio.progress / 100) * affirmationLines.length));
 
@@ -394,14 +395,16 @@ function MeditationPage() {
             >{affirmationLines[affirmationIndex]}</motion.p>
           </AnimatePresence>
         </span>
-        <span className="tap-hint">轻触{audio.playing ? "暂停" : "继续"}</span>
       </button>
-      <div className="progress-track" aria-label={`播放进度 ${Math.round(audio.progress)}%`}><span style={{ width: `${audio.progress}%` }} /></div>
       {audio.audioError && <div className="audio-error" role="alert"><span>声音暂时没有加载出来。</span><button onClick={audio.play}>重新尝试</button></div>}
       <div className="immersive-control-area">
+        <motion.div className="playback-status" layout transition={controlLayoutTransition}>
+          <span className="tap-hint">轻触{audio.playing ? "暂停" : "继续"}</span>
+          <div className="progress-track" aria-label={`播放进度 ${Math.round(audio.progress)}%`}><span style={{ width: `${audio.progress}%` }} /></div>
+        </motion.div>
         <AnimatePresence initial={false}>
           {controlsOpen && (
-            <motion.div key="panel" className="immersive-controls" role="group" aria-label="播放控制" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0, transition: { duration: .1 } } : { opacity: 0, y: 8, scale: .99, transition: { duration: .18, ease: [.4, 0, 1, 1] } }} transition={{ duration: reduceMotion ? .1 : .26, ease: [0.22, 1, 0.36, 1] }}>
+            <motion.div layout key="panel" className="immersive-controls" role="group" aria-label="播放控制" initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0, transition: { duration: .1 } } : { opacity: 0, y: 8, scale: .99, transition: { duration: .18, ease: [.4, 0, 1, 1] } }} transition={{ duration: reduceMotion ? .1 : .26, ease: [0.22, 1, 0.36, 1] }}>
               <div className="transport-controls">
                 <button onClick={() => keepControlsOpen(() => audio.seekBy(-15))} aria-label="后退15秒"><ArrowCounterClockwise size={23} /><span>15</span></button>
                 <button className="play-button" disabled={audio.loading} onClick={() => keepControlsOpen(() => audio.playing ? audio.pause() : audio.play())} aria-label={audio.loading ? "音频正在准备" : audio.playing ? "暂停" : "播放"}>
@@ -413,10 +416,10 @@ function MeditationPage() {
             </motion.div>
           )}
         </AnimatePresence>
-        <button className={`control-reveal ${controlsOpen ? "is-open" : ""}`} onClick={() => setControlsOpen((open) => !open)} aria-label={controlsOpen ? "收起播放控制" : "显示播放控制"} aria-expanded={controlsOpen}>
+        <motion.button layout transition={controlLayoutTransition} className={`control-reveal ${controlsOpen ? "is-open" : ""}`} onClick={() => setControlsOpen((open) => !open)} aria-label={controlsOpen ? "收起播放控制" : "显示播放控制"} aria-expanded={controlsOpen}>
           <SlidersHorizontal size={21} />
           <span>{controlsOpen ? "收起控制" : "播放控制"}</span>
-        </button>
+        </motion.button>
       </div>
     </main>
   );
@@ -716,29 +719,38 @@ function SettingsPage() {
     <main className="screen settings-screen">
       <TopLevelIntro title={["把体验调成", "更适合你的样子。"]} subtitle="声音、动效与隐私，都可以随时调整。" section="设置" />
       <section className="menu-hub" aria-label="其他功能">
-        <h2>基础功能</h2>
+        <h2>内容与工具</h2>
         <Link to="/encounter"><DiceThree size={20} /><span><strong>声音盲盒</strong><small>让此刻随机遇见一段声音</small></span><ArrowRight size={16} /></Link>
-        <Link to="/favorites"><Heart size={20} /><span><strong>收藏</strong><small>保留想再次使用的内容</small></span><ArrowRight size={16} /></Link>
         <Link to="/emotion-index"><BookOpenText size={20} /><span><strong>情绪索引</strong><small>阅读克制、非诊断式的心理词条</small></span><ArrowRight size={16} /></Link>
+        <Link to="/favorites"><Heart size={20} /><span><strong>收藏</strong><small>保留想再次使用的内容</small></span><ArrowRight size={16} /></Link>
       </section>
       <section className="settings-group">
-        <h2>外观</h2>
+        <h2>外观与显示</h2>
         <div className="segmented-control">
           {[["system", "跟随系统", GearSix], ["light", "浅色", Sun], ["dark", "深色", Moon]].map(([value, label, Icon]) => <button key={value} className={settings.theme === value ? "is-selected" : ""} onClick={() => update("theme", value)}><Icon size={17} />{label}</button>)}
         </div>
+        <div className="setting-row"><div><strong>全屏模式</strong><span>隐藏浏览器界面，更专注地体验</span></div><Toggle checked={fullscreenActive} onChange={toggleFullscreen} label="全屏模式" /></div>
       </section>
       <section className="settings-group">
-        <h2>体验</h2>
+        <h2>书写与交互</h2>
         <div className="setting-choice-row">
           <div><strong>键入位置</strong><span>阅后即焚中的文字起点</span></div>
           <div className="segmented-control compact" aria-label="阅后即焚键入位置">
             {[["fixed", "固定区域"], ["free", "自由落字"]].map(([value, label]) => <button key={value} className={(settings.burnInputLayout ?? "fixed") === value ? "is-selected" : ""} onClick={() => update("burnInputLayout", value)}>{label}</button>)}
           </div>
         </div>
-        <div className="setting-row"><div><strong>全屏模式</strong><span>隐藏浏览器界面，更专注地体验</span></div><Toggle checked={fullscreenActive} onChange={toggleFullscreen} label="全屏模式" /></div>
-        {[["breathing", "呼吸提示"], ["haptics", "轻触反馈"], ["reducedEffects", "降低动效"], ["weather", "盲盒使用天气信息"], ["recordsEnabled", "保存体验记录"]].map(([key, label]) => <div className="setting-row" key={key}><div><strong>{label}</strong><span>{key === "recordsEnabled" ? "默认关闭，只记录完成信息" : key === "weather" ? "需要时再请求定位权限" : "可随时调整"}</span></div><Toggle checked={settings[key]} onChange={(value) => update(key, value)} label={label} /></div>)}
+        {[["haptics", "轻触反馈"], ["breathing", "呼吸提示"], ["reducedEffects", "降低动效"]].map(([key, label]) => <div className="setting-row" key={key}><div><strong>{label}</strong><span>可随时调整</span></div><Toggle checked={settings[key]} onChange={(value) => update(key, value)} label={label} /></div>)}
       </section>
-      <section className="settings-group privacy-block"><h2>你的数据</h2><p>数据只保存在当前浏览器。清除浏览器数据、卸载 PWA 或更换设备后无法恢复。</p><button className="danger-action" onClick={clearData}><Trash size={18} />清除所有本地数据</button></section>
+      <section className="settings-group">
+        <h2>环境能力</h2>
+        <div className="setting-row"><div><strong>盲盒使用天气信息</strong><span>需要时再请求定位权限</span></div><Toggle checked={settings.weather} onChange={(value) => update("weather", value)} label="盲盒使用天气信息" /></div>
+      </section>
+      <section className="settings-group privacy-block">
+        <h2>记录与隐私</h2>
+        <div className="setting-row"><div><strong>保存体验记录</strong><span>默认关闭，只记录完成信息</span></div><Toggle checked={settings.recordsEnabled} onChange={(value) => update("recordsEnabled", value)} label="保存体验记录" /></div>
+        <p>数据只保存在当前浏览器。清除浏览器数据、卸载 PWA 或更换设备后无法恢复。</p>
+        <button className="danger-action" onClick={clearData}><Trash size={18} />清除所有本地数据</button>
+      </section>
     </main>
   );
 }
@@ -843,9 +855,9 @@ function PersistentTabBar() {
     <nav className="persistent-tabs" aria-label="主要功能">
       {primaryTabs.map(([path, Icon, label]) => {
         const active = location.pathname === path;
-        return <Link key={path} to={path} className={active ? "is-active" : ""} aria-current={active ? "page" : undefined}>
+        return <Link key={path} to={path} className={active ? "is-active" : ""} aria-label={label} aria-current={active ? "page" : undefined}>
           {active && <motion.span className="tab-active-surface" layoutId="active-tab" transition={{ duration: .22, ease: [0.22, 1, 0.36, 1] }} />}
-          <Icon size={21} weight="regular" /><span>{label}</span>
+          <Icon size={22} weight="regular" /><span className="sr-only">{label}</span>
         </Link>;
       })}
     </nav>

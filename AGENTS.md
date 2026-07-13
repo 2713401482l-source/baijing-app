@@ -32,6 +32,10 @@ When implementing from a selected generated mock, treat that image as the source
 - New and reset installations default to dark appearance. Preserve any explicit saved light or system preference, and resolve system appearance before first paint to avoid a flash.
 - Burn fixed-input placeholder, caret, typed copy and burning copy share the same 20px KaiTi narrative metrics and fixed origin. Burning may glow and fragment, but must never render a rectangular text boundary.
 - Meditation breathing halos must remain fully inside the visible stage at 320px portrait, common long-screen phones and phone landscape. The breathing surface is visually centered while both collapsed and expanded controls remain above the bottom edge without scrolling.
+- Meditation metadata is a quiet, two-line, right-aligned gray supplement aligned with the back control. The affirmation copy must share the exact optical center of the breathing surface.
+- Meditation playback status, progress, expanded transport panel and reveal control form one bottom-anchored flow stack. The reveal control stays fixed; status/progress moves upward above the panel with 8-10px fixed gaps and never overlaps.
+- Persistent primary tabs are icon-only visually, while retaining accessible names. Active state uses the accent icon plus a short underline; each target remains at least 44px tall.
+- Settings order is: Content & Tools, Appearance & Display, Writing & Interaction, Environment Capabilities, Records & Privacy. Group by user intent and keep destructive local-data clearing last.
 
 - Primary visual source: `design/final-canvas-target.png`.
 - Keep the reference's quiet monochrome soft-control material, circular selector, generous whitespace, fine strokes, subtle ambient elevation, and restrained 12-16px radii.

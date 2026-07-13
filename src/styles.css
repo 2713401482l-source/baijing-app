@@ -342,3 +342,108 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 @media(prefers-reduced-motion:reduce){
   .breath-orb.is-breathing{animation:none;background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
 }
+
+/* v6 — quiet navigation, anchored player controls and settings hierarchy */
+.canvas-screen,.burn-screen,.library-screen,.settings-screen{
+  padding-bottom:calc(92px + env(safe-area-inset-bottom,0px));
+}
+.persistent-tabs{
+  height:58px;
+  padding:5px 10px;
+}
+.persistent-tabs a{
+  min-height:48px;
+  gap:0;
+  font-size:0;
+}
+.persistent-tabs svg{stroke-width:1.5}
+.persistent-tabs a.is-active svg{stroke-width:1.8}
+.tab-active-surface{
+  bottom:1px;
+  width:22px;
+  height:2px;
+}
+.records-empty{padding-top:92px}
+
+.meditation-screen{
+  position:relative;
+  grid-template-rows:auto minmax(0,1fr) auto;
+}
+.meditation-meta{
+  position:absolute;
+  z-index:3;
+  top:calc(var(--safe-top) + 10px);
+  right:max(var(--gutter),env(safe-area-inset-right,0px));
+  min-height:44px;
+  padding:0;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  justify-content:center;
+  gap:2px;
+  color:var(--subtle);
+  font-family:var(--font-ui);
+  font-size:10px;
+  line-height:1.45;
+  letter-spacing:.08em;
+  text-align:right;
+}
+.affirmation-stage p{
+  justify-self:center;
+  align-self:center;
+  text-align:center;
+}
+.affirmation-visual{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.affirmation-stage p{flex:0 0 auto}
+.immersive-control-area{
+  height:clamp(228px,30dvh,270px);
+  justify-content:flex-end;
+  gap:10px;
+  padding:0 0 clamp(18px,3dvh,28px);
+}
+.playback-status{
+  flex:0 0 auto;
+  width:100%;
+  display:grid;
+  gap:8px;
+}
+.playback-status .tap-hint{
+  position:static;
+  display:block;
+  color:var(--subtle);
+  font-size:9px;
+  line-height:1.4;
+  letter-spacing:.14em;
+  text-align:center;
+}
+.playback-status .progress-track{width:100%}
+.immersive-controls,.control-reveal{flex:0 0 auto}
+.privacy-block .setting-row{margin-bottom:16px}
+.privacy-block p{margin-top:0}
+
+@media(orientation:portrait) and (max-height:700px){
+  .immersive-control-area{height:220px;padding-bottom:12px;gap:8px}
+}
+@media(orientation:landscape) and (max-height:600px){
+  .meditation-screen{
+    grid-template-rows:auto minmax(0,1fr);
+  }
+  .meditation-screen .app-header{grid-column:1;grid-row:1}
+  .meditation-meta{
+    position:static;
+    grid-column:1;
+    grid-row:1;
+    align-self:center;
+    justify-self:end;
+    margin:0;
+  }
+  .affirmation-stage{grid-column:1;grid-row:2}
+  .immersive-control-area{grid-column:2;grid-row:1/3;height:min(270px,calc(100dvh - 32px));padding:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .playback-status,.control-reveal{transition:none!important}
+}
