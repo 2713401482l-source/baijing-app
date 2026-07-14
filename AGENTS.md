@@ -42,7 +42,8 @@ When implementing from a selected generated mock, treat that image as the source
 - The selected-state chevron is vertically centered to the whole selected row and inset 12px from the row's right edge.
 - Favorites and every Favorites entry point, route, persistence field and clear-data reference are removed completely.
 - Records has no “前往设置” CTA. Its quiet privacy icon/copy is centered in the usable space between the intro and persistent tabs.
-- Canvas uses a restrained rail-led breathing treatment: every unselected state recedes by the same slight amount, while the selected surface, subtitle and rail node breathe together with only minimal card scaling. Reduced-motion keeps the hierarchy static.
+- Canvas uses a restrained rail-led breathing treatment: every unselected state recedes by the same slight amount, while the selected surface, subtitle and rail node breathe together over a static selected-card scale. Reduced-motion keeps the hierarchy static.
+- The selected state's 1px left accent and card geometry remain static. Never apply brightness filters or continuous scaling to that accent-bearing layer; breathing belongs to the tonal surface, subtitle and rail node to avoid subpixel shimmer on high-density mobile displays.
 - Guided meditation attempts playback on entry. If a browser blocks autoplay, the screen remains error-free and asks for one tap to begin; user pauses and background returns are never overridden.
 - Burn's placeholder stays absent throughout ignition and returns only after the final ember finishes, with a fade. Free placement can use the full right side; handwriting ignition samples actual ink and uses randomized, multi-origin fragmentation comparable to typed burning.
 - Canvas cards are 5–10% taller and selected subtitles 10–15% larger while remaining a single readable line and preserving the existing restrained hierarchy.

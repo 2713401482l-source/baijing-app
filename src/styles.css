@@ -569,18 +569,14 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 .state-title-row:not(.is-selected){transform:scale(.995);opacity:.94}
 .state-title-row.is-selected{
   opacity:1;
-  animation:state-focus-breathe 5.8s cubic-bezier(.45,0,.55,1) infinite;
+  transform:translateX(3px) scale(1.009);
 }
 .state-title-row.is-selected:before{animation:state-surface-breathe 5.8s cubic-bezier(.45,0,.55,1) infinite}
 .state-title-row.is-selected small{animation:subtitle-reveal .5s ease forwards,state-subtitle-breathe 5.8s .5s cubic-bezier(.45,0,.55,1) infinite}
 .rail-stop.is-selected{animation:state-node-breathe 5.8s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes state-focus-breathe{
-  0%,100%{transform:translateX(3px) scale(1.006)}
-  50%{transform:translateX(3px) scale(1.012)}
-}
 @keyframes state-surface-breathe{
-  0%,100%{filter:brightness(.98);box-shadow:inset 16px 0 26px color-mix(in srgb,var(--accent) 4%,transparent)}
-  50%{filter:brightness(1.08);box-shadow:inset 30px 0 46px color-mix(in srgb,var(--accent) 11%,transparent)}
+  0%,100%{background-color:color-mix(in srgb,var(--accent) 7%,var(--surface));box-shadow:inset 16px 0 26px color-mix(in srgb,var(--accent) 4%,transparent)}
+  50%{background-color:color-mix(in srgb,var(--accent) 10%,var(--surface));box-shadow:inset 30px 0 46px color-mix(in srgb,var(--accent) 11%,transparent)}
 }
 @keyframes state-subtitle-breathe{
   0%,100%{opacity:.82}
@@ -591,7 +587,7 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   50%{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 0 0 11px color-mix(in srgb,var(--accent) 13%,transparent),0 0 28px color-mix(in srgb,var(--accent) 28%,transparent)}
 }
 @media(prefers-reduced-motion:reduce){
-  .state-title-row.is-selected,.state-title-row.is-selected:before,.rail-stop.is-selected{animation:none!important}
+  .state-title-row.is-selected:before,.rail-stop.is-selected{animation:none!important}
   .state-title-row.is-selected{transform:translateX(3px) scale(1.009)}
   .state-title-row.is-selected small{animation:subtitle-reveal .12s ease forwards!important}
 }
