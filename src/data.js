@@ -344,10 +344,12 @@ export const knowledgeTopics = knowledgeTopicsBase.map((topic, topicIndex) => ({
 }));
 
 export const encounterTracks = [
-  { id: "white-noise", category: "noise", title: "白噪 · 均匀", note: "连续、平直，不需要跟随旋律", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Whitenoisesound.ogg", loop: true, license: "公有领域", source: "Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Whitenoisesound.ogg" },
-  { id: "gray-noise", category: "noise", title: "灰噪 · 低缓", note: "较柔和的频谱，适合降低环境干扰", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gray_noise.ogg", loop: true, license: "公有领域", source: "Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Gray_noise.ogg" },
-  { id: "white-noise-soft", category: "noise", title: "白噪 · 轻声", note: "短循环、轻量，留出更安静的背景", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/White.Noise.ogg", loop: true, license: "公有领域", source: "Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:White.Noise.ogg" },
+  { id: "rain-window", category: "nature", title: "雨落窗边", note: "细雨贴着窗面，室内仍然安静", src: "audio/encounter/rain-window.mp3", loop: true, detail: "rain" },
+  { id: "rain-thunder", category: "nature", title: "远雷与雨", note: "雨声连绵，偶尔有很远的低雷", src: "audio/encounter/rain-thunder.mp3", loop: true, detail: "thunder" },
+  { id: "campfire", category: "nature", title: "夜晚篝火", note: "木柴轻响，火光在近处慢慢变化", src: "audio/encounter/campfire.mp3", loop: true, detail: "fire" },
+  { id: "pebble-waves", category: "nature", title: "岸边碎浪", note: "海浪越过碎石，又缓慢退回", src: "audio/encounter/pebble-waves.mp3", loop: true, detail: "waves" },
+  { id: "shallow-stream", category: "nature", title: "浅溪流石", note: "水流经过石面，清晰但不急促", src: "audio/encounter/shallow-stream.mp3", loop: true, detail: "water" },
+  { id: "forest-ambience", category: "nature", title: "林间清晨", note: "远处鸟鸣与树叶声留在背景里", src: "audio/encounter/forest-ambience.mp3", loop: true, detail: "wind" },
   { id: "reverie", category: "music", title: "梦 · Rêverie", note: "德彪西钢琴作品，缓慢而有留白", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Reverie.ogg", loop: false, license: "公有领域", source: "Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Reverie.ogg" },
   { id: "chopin-nocturne", category: "music", title: "夜曲 · Op. 9 No. 2", note: "肖邦夜曲，柔和而连贯", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/Chopin.Nocturne.Es-Dur.opus.9.2.ogg", loop: false, license: "CC0", source: "Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:Chopin.Nocturne.Es-Dur.opus.9.2.ogg" },
-  { id: "bach-cello", category: "music", title: "无伴奏 · 前奏曲", note: "巴赫大提琴组曲，稳定、清晰", src: "https://commons.wikimedia.org/wiki/Special:Redirect/file/JOHN_MICHEL_CELLO-J_S_BACH_CELLO_SUITE_1_in_G_Prelude.ogg", loop: false, license: "CC BY-SA 3.0", source: "John Michel / Wikimedia Commons", sourceUrl: "https://commons.wikimedia.org/wiki/File:JOHN_MICHEL_CELLO-J_S_BACH_CELLO_SUITE_1_in_G_Prelude.ogg" },
 ];

@@ -46,6 +46,7 @@ function useAppData() {
     recordsEnabled: false,
     breathing: true,
     haptics: true,
+    interfaceSounds: true,
     reducedEffects: false,
     voiceVolume: 0.72,
     ambienceVolume: 0.42,
@@ -91,12 +92,12 @@ function TopLevelIntro({ title, subtitle, section }) {
   );
 }
 
-function AppHeader({ title = "白境", back = false, onMenu }) {
+function AppHeader({ title = "白境", back = false, onBack, onMenu }) {
   const navigate = useNavigate();
   return (
     <header className="app-header">
       {back ? (
-        <button className="icon-button" onClick={() => navigate(-1)} aria-label="返回">
+        <button className="icon-button" onClick={onBack ?? (() => navigate(-1))} aria-label="返回">
           <ArrowLeft size={22} weight="regular" />
         </button>
       ) : (
@@ -173,8 +174,8 @@ function CanvasPage() {
   const playRailTick = (index) => {
     if (lastTickRef.current === index) return;
     lastTickRef.current = index;
-    if (!settings.haptics) return;
-    navigator.vibrate?.(index === 2 ? 7 : 10);
+    if (settings.haptics) navigator.vibrate?.(index === 2 ? 7 : 10);
+    if (settings.interfaceSounds === false) return;
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
     const context = audioContextRef.current || new AudioContext();
@@ -654,6 +655,65 @@ function BurnPage() {
   );
 }
 
+function useAmbientDetails(track, playing, reducedEffects) {
+  useEffect(() => {
+    if (!playing || track?.category !== "nature" || reducedEffects || document.documentElement.classList.contains("low-power")) return undefined;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return undefined;
+    const context = new AudioContext();
+    const master = context.createGain();
+    master.gain.value = .032;
+    master.connect(context.destination);
+    let timer;
+    let stopped = false;
+    const profiles = {
+      rain: { min: 900, max: 2400, duration: [.08, .2], filter: "highpass", frequency: 2100, level: .12 },
+      thunder: { min: 6500, max: 12500, duration: [1.5, 2.8], filter: "lowpass", frequency: 260, level: .055 },
+      fire: { min: 520, max: 1700, duration: [.045, .13], filter: "highpass", frequency: 1450, level: .18 },
+      waves: { min: 2900, max: 5200, duration: [1.7, 2.8], filter: "lowpass", frequency: 560, level: .052 },
+      water: { min: 1100, max: 2600, duration: [.12, .32], filter: "bandpass", frequency: 1650, level: .1 },
+      wind: { min: 3400, max: 6800, duration: [1.4, 2.5], filter: "lowpass", frequency: 760, level: .045 },
+    };
+    const profile = profiles[track.detail] ?? profiles.wind;
+    const randomBetween = (min, max) => min + Math.random() * (max - min);
+    const makeDetail = () => {
+      if (stopped || context.state === "closed") return;
+      const duration = randomBetween(...profile.duration);
+      const frameCount = Math.max(1, Math.round(context.sampleRate * duration));
+      const buffer = context.createBuffer(1, frameCount, context.sampleRate);
+      const channel = buffer.getChannelData(0);
+      let previous = 0;
+      for (let index = 0; index < channel.length; index += 1) {
+        const white = Math.random() * 2 - 1;
+        previous = previous * .72 + white * .28;
+        const envelope = Math.sin(Math.PI * index / channel.length);
+        channel[index] = (profile.filter === "lowpass" ? previous : white) * envelope;
+      }
+      const source = context.createBufferSource();
+      const filter = context.createBiquadFilter();
+      const gain = context.createGain();
+      source.buffer = buffer;
+      filter.type = profile.filter;
+      filter.frequency.value = profile.frequency * randomBetween(.82, 1.18);
+      if (profile.filter === "bandpass") filter.Q.value = .72;
+      const now = context.currentTime;
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(profile.level * randomBetween(.62, 1), now + Math.min(.08, duration * .28));
+      gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+      source.connect(filter); filter.connect(gain); gain.connect(master);
+      source.start(now); source.stop(now + duration + .02);
+      timer = window.setTimeout(makeDetail, randomBetween(profile.min, profile.max));
+    };
+    context.resume().then(() => { timer = window.setTimeout(makeDetail, randomBetween(650, 1600)); }).catch(() => {});
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      master.disconnect();
+      context.close().catch(() => {});
+    };
+  }, [playing, reducedEffects, track?.category, track?.detail, track?.id]);
+}
+
 function useEncounterAudio(track) {
   const audioRef = useRef(null);
   const loadTimeoutRef = useRef(null);
@@ -666,7 +726,7 @@ function useEncounterAudio(track) {
     const audio = new Audio(track.src);
     audio.preload = "metadata";
     audio.loop = Boolean(track.loop);
-    audio.volume = track.category === "noise" ? .34 : .56;
+    audio.volume = track.category === "nature" ? .48 : .56;
     const onTime = () => setElapsed(audio.currentTime || 0);
     const onEnded = () => setPlaying(false);
     const clearLoadTimeout = () => {
@@ -715,6 +775,7 @@ function EncounterPage() {
   const { settings, setRecords } = useData();
   const [track, setTrack] = useState(null);
   const audio = useEncounterAudio(track);
+  useAmbientDetails(track, audio.playing, settings.reducedEffects);
   const choose = (category, excludeId) => {
     const pool = encounterTracks.filter((item) => item.category === category && item.id !== excludeId);
     const next = pool[Math.floor(Math.random() * pool.length)] ?? encounterTracks.find((item) => item.category === category);
@@ -726,29 +787,28 @@ function EncounterPage() {
   };
   return (
     <main className="screen encounter-screen">
-      <AppHeader title="声音盲盒" back />
+      <AppHeader title="声音盲盒" back onBack={track ? () => setTrack(null) : undefined} />
       {!track ? (
         <section className="encounter-choice">
           <FunctionSeal>声音盲盒</FunctionSeal>
           <h1>这一次，<br />想遇见哪一种声音？</h1>
-          <p>选择一种类型，白境会从开放许可音源中随机抽取。</p>
+          <p>选择一种类型。自然声来自精选实录，每次播放还会有一点不重复的细节。</p>
           <div className="encounter-doors">
-            <button onClick={() => choose("noise")}><Waveform size={24} /><span><strong>白噪音</strong><small>连续、均匀，遮住一点环境声</small></span><CaretRight size={18} /></button>
+            <button onClick={() => choose("nature")}><Waveform size={24} /><span><strong>自然声</strong><small>细雨、篝火、海浪与林间声音</small></span><CaretRight size={18} /></button>
             <button onClick={() => choose("music")}><MusicNotes size={24} /><span><strong>纯音乐</strong><small>没有人声，让旋律慢慢经过</small></span><CaretRight size={18} /></button>
           </div>
         </section>
       ) : (
         <>
           <div className="encounter-stage">
-            <span>{track.category === "noise" ? "白噪音" : "纯音乐"} · 随机遇见</span>
+            <span>{track.category === "nature" ? "自然声" : "纯音乐"} · 随机遇见</span>
             <h1>{track.title}</h1>
             <p>{track.note}</p>
             <div className={`sound-rings ${audio.playing ? "is-playing" : ""}`} aria-hidden="true"><span /><span /><span /></div>
           </div>
           <button className="play-button encounter-play" disabled={audio.loading} onClick={audio.toggle} aria-label={audio.loading ? "正在连接音源" : audio.playing ? "暂停" : "播放"}>{audio.playing ? <Pause size={28} weight="fill" /> : <Play size={28} weight="fill" />}</button>
-          {audio.failed ? <div className="encounter-error" role="alert"><span>这个在线音源暂时无法播放。</span><button onClick={() => choose(track.category, track.id)}>换一个来源</button></div> : <p className="encounter-rule">在线播放，不保存音频。你可以随时暂停或离开。</p>}
-          <a className="encounter-source" href={track.sourceUrl} target="_blank" rel="noreferrer">{track.source} · {track.license}</a>
-          <button className="text-action" onClick={leave}>结束并返回</button>
+          {audio.failed && <div className="encounter-error" role="alert"><span>这个声音暂时没有准备好。</span><button onClick={() => choose(track.category, track.id)}>换一个声音</button></div>}
+          <button className="text-action" onClick={leave}>结束并回到主页</button>
         </>
       )}
     </main>
@@ -874,9 +934,18 @@ function SettingsPage() {
           {[["system", "跟随系统", GearSix], ["light", "浅色", Sun], ["dark", "深色", Moon]].map(([value, label, Icon]) => <button key={value} className={settings.theme === value ? "is-selected" : ""} onClick={() => update("theme", value)}><Icon size={17} />{label}</button>)}
         </div>
         <div className="setting-row"><div><strong>全屏模式</strong><span>隐藏浏览器界面，更专注地体验</span></div><Toggle checked={fullscreenActive} onChange={toggleFullscreen} label="全屏模式" /></div>
+        <div className="setting-row"><div><strong>降低动效</strong><span>减少动态细节与视觉变化</span></div><Toggle checked={settings.reducedEffects} onChange={(value) => update("reducedEffects", value)} label="降低动效" /></div>
       </section>
       <section className="settings-group">
-        <h2>书写与交互</h2>
+        <h2>声音与反馈</h2>
+        {[
+          ["interfaceSounds", "界面音效", "状态滑杆与必要的操作提示音"],
+          ["haptics", "触感反馈", "支持时使用手机振动"],
+          ["breathing", "呼吸提示", "播放时显示缓慢呼吸变化"],
+        ].map(([key, label, description]) => <div className="setting-row" key={key}><div><strong>{label}</strong><span>{description}</span></div><Toggle checked={settings[key] ?? (key === "interfaceSounds")} onChange={(value) => update(key, value)} label={label} /></div>)}
+      </section>
+      <section className="settings-group">
+        <h2>书写</h2>
         <div className="setting-choice-row">
           <div><strong>键入位置</strong><span>阅后即焚中的文字起点</span></div>
           <div className="segmented-control compact" aria-label="阅后即焚键入位置">
@@ -886,7 +955,6 @@ function SettingsPage() {
             })}
           </div>
         </div>
-        {[["haptics", "轻触反馈"], ["breathing", "呼吸提示"], ["reducedEffects", "降低动效"]].map(([key, label]) => <div className="setting-row" key={key}><div><strong>{label}</strong><span>可随时调整</span></div><Toggle checked={settings[key]} onChange={(value) => update(key, value)} label={label} /></div>)}
       </section>
       <section className="settings-group privacy-block">
         <h2>记录与隐私</h2>
@@ -946,7 +1014,7 @@ function ThemeEffect() {
 
   useEffect(() => {
     const feedback = (event) => {
-      if (!settings.haptics) return;
+      if (!settings.haptics && settings.interfaceSounds === false) return;
       const target = event.target instanceof Element ? event.target.closest("button, a, [role='option'], [role='tab'], [role='switch']") : null;
       if (!target || target.matches(":disabled, [aria-disabled='true']") || target.closest("[data-feedback='none']")) return;
       const now = Date.now();
@@ -954,7 +1022,8 @@ function ThemeEffect() {
       lastFeedbackRef.current = now;
       const kind = target.dataset.feedback || "soft";
       const duration = kind === "confirm" ? 16 : kind === "selection" ? 11 : 8;
-      navigator.vibrate?.(duration);
+      if (settings.haptics) navigator.vibrate?.(duration);
+      if (settings.interfaceSounds === false) return;
       const AudioContext = window.AudioContext || window.webkitAudioContext;
       if (!AudioContext) return;
       const context = feedbackContextRef.current || new AudioContext();
@@ -972,7 +1041,7 @@ function ThemeEffect() {
     };
     document.addEventListener("click", feedback, true);
     return () => document.removeEventListener("click", feedback, true);
-  }, [settings.haptics]);
+  }, [settings.haptics, settings.interfaceSounds]);
   return null;
 }
 
