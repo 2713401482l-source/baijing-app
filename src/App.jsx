@@ -257,6 +257,7 @@ function CanvasPage() {
               role="option"
               aria-selected={selectedIndex === index}
               className={`state-title-row ${selectedIndex === index ? "is-selected" : ""}`}
+              data-focus-distance={Math.abs(selectedIndex - index)}
               onClick={() => selectedIndex === index ? navigate(`/states/${state.id}`) : setSelectedIndex(index)}
             >
               <span className="state-name-line"><span>{state.title}</span>{selectedIndex === index && <CaretRight className="state-enter-cue" size={17} aria-hidden="true" />}</span>
@@ -298,6 +299,7 @@ function StateScenesPage() {
   const { stateId } = useParams();
   const state = getState(stateId);
   const navigate = useNavigate();
+  const { settings } = useData();
   return (
     <main className="screen detail-screen">
       <AppHeader title={state.title} back />
@@ -308,7 +310,10 @@ function StateScenesPage() {
       </section>
       <div className="scene-list">
         {state.scenes.map((scene, index) => (
-          <button key={scene} disabled={index > 0} className={index > 0 ? "is-unavailable" : ""} onClick={() => navigate(`/meditation/${state.id}/${index}`)}>
+          <button key={scene} disabled={index > 0} className={index > 0 ? "is-unavailable" : ""} onClick={() => {
+            primeGuidedAudio(state.audio, settings.voiceVolume);
+            navigate(`/meditation/${state.id}/${index}`);
+          }}>
             <span>{scene}</span>
             {index === 0 ? <ArrowRight size={19} /> : <small><LockSimple size={13} />即将上线</small>}
           </button>
@@ -318,17 +323,46 @@ function StateScenesPage() {
   );
 }
 
-function useGuidedAudio(src, volume) {
+let primedGuidedAudio = null;
+
+function createGuidedAudio(src, volume) {
+  const element = new Audio(`${import.meta.env.BASE_URL}${src.replace(/^\//, "")}`);
+  element.preload = "metadata";
+  element.volume = volume;
+  return element;
+}
+
+function primeGuidedAudio(src, volume) {
+  if (primedGuidedAudio?.element) primedGuidedAudio.element.pause();
+  const element = createGuidedAudio(src, volume);
+  const playPromise = element.play();
+  primedGuidedAudio = { src, element, playPromise };
+  playPromise.catch(() => {});
+}
+
+function takePrimedGuidedAudio(src) {
+  if (primedGuidedAudio?.src !== src) {
+    primedGuidedAudio?.element?.pause();
+    primedGuidedAudio = null;
+    return null;
+  }
+  const pending = primedGuidedAudio;
+  primedGuidedAudio = null;
+  return pending;
+}
+
+function useGuidedAudio(src, volume, autoStart = false) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [audioError, setAudioError] = useState(false);
+  const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [loading, setLoading] = useState(false);
   const audioRef = useRef(null);
 
   useEffect(() => {
-    const element = new Audio(`${import.meta.env.BASE_URL}${src.replace(/^\//, "")}`);
-    element.preload = "metadata";
+    const primed = takePrimedGuidedAudio(src);
+    const element = primed?.element ?? createGuidedAudio(src, volume);
     element.volume = volume;
     const onMetadata = () => setDuration(element.duration || 0);
     const onTime = () => setProgress(element.duration ? element.currentTime / element.duration * 100 : 0);
@@ -339,18 +373,40 @@ function useGuidedAudio(src, volume) {
     element.addEventListener("ended", onEnded);
     element.addEventListener("error", onError);
     audioRef.current = element;
+    if (autoStart) {
+      setLoading(true);
+      (primed?.playPromise ?? element.play()).then(() => {
+        setPlaying(true);
+        setAutoplayBlocked(false);
+        setLoading(false);
+      }).catch((error) => {
+        setPlaying(false);
+        setLoading(false);
+        if (error?.name === "NotAllowedError") {
+          setAutoplayBlocked(true);
+          setAudioError(false);
+        } else if (error?.name !== "AbortError") {
+          setAudioError(true);
+        }
+      });
+    }
     return () => {
       element.pause();
       element.removeEventListener("loadedmetadata", onMetadata); element.removeEventListener("timeupdate", onTime); element.removeEventListener("ended", onEnded); element.removeEventListener("error", onError);
       element.removeAttribute("src"); element.load();
     };
-  }, [src]);
+  }, [src, autoStart]);
 
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume]);
 
   const play = () => {
-    setAudioError(false); setLoading(true);
-    audioRef.current?.play().then(() => { setPlaying(true); setLoading(false); }).catch(() => { setPlaying(false); setLoading(false); setAudioError(true); });
+    setAudioError(false); setAutoplayBlocked(false); setLoading(true);
+    audioRef.current?.play().then(() => { setPlaying(true); setLoading(false); }).catch((error) => {
+      setPlaying(false);
+      setLoading(false);
+      if (error?.name === "NotAllowedError") setAutoplayBlocked(true);
+      else if (error?.name !== "AbortError") setAudioError(true);
+    });
   };
 
   const pause = () => {
@@ -364,7 +420,7 @@ function useGuidedAudio(src, volume) {
     element.currentTime = next;
     setProgress(element.duration ? next / element.duration * 100 : 0);
   };
-  return { playing, play, pause, progress, duration, seekBy, audioError, loading };
+  return { playing, play, pause, progress, duration, seekBy, audioError, autoplayBlocked, loading };
 }
 
 function MeditationPage() {
@@ -372,7 +428,7 @@ function MeditationPage() {
   const state = getState(stateId);
   const navigate = useNavigate();
   const { settings } = useData();
-  const audio = useGuidedAudio(state.audio, settings.voiceVolume);
+  const audio = useGuidedAudio(state.audio, settings.voiceVolume, true);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [controlActivity, setControlActivity] = useState(0);
   const hideControlsRef = useRef(null);
@@ -422,7 +478,7 @@ function MeditationPage() {
       {audio.audioError && <div className="audio-error" role="alert"><span>声音暂时没有加载出来。</span><button onClick={audio.play}>重新尝试</button></div>}
       <div className="immersive-control-area">
         <motion.div className="playback-status" layout transition={controlLayoutTransition}>
-          <span className="tap-hint">轻触{audio.playing ? "暂停" : "继续"}</span>
+          <span className="tap-hint">{audio.autoplayBlocked ? "轻触开始" : `轻触${audio.playing ? "暂停" : "继续"}`}</span>
           <div className="progress-track" aria-label={`播放进度 ${Math.round(audio.progress)}%`}><span style={{ width: `${audio.progress}%` }} /></div>
         </motion.div>
         <AnimatePresence initial={false}>

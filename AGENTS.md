@@ -39,9 +39,11 @@ When implementing from a selected generated mock, treat that image as the source
 - Encounter has two explicit choices (white noise and pure instrumental music) and randomly plays from a curated open-license remote source list. Weather, time and location matching are removed; loading must time out into a clear alternate-source action.
 - Superseding Encounter direction (2026-07-14): the first choice is named “自然声”, not white noise. It randomly selects one of six bundled public-domain recordings (rain, distant thunder, campfire, waves, stream or forest), then adds very quiet procedural detail through Web Audio. Reduced-effects and low-power modes disable the procedural layer while preserving the recording. The track-level back control returns to the two-choice Encounter screen; “结束并回到主页” returns to Canvas. Do not display network/storage or source-license copy on the playback surface; keep source provenance in the packaged audio ledger.
 - Interface sound and haptic feedback are independent settings. “界面音效” controls rail and interaction tones; “触感反馈” controls vibration. Existing installations without the new sound key default to sound enabled.
-- The selected-state chevron is vertically centered to the whole selected row and inset 30px from the row’s right edge.
+- The selected-state chevron is vertically centered to the whole selected row and inset 12px from the row's right edge.
 - Favorites and every Favorites entry point, route, persistence field and clear-data reference are removed completely.
-- Records has no “前往设置” CTA. Its quiet privacy icon/copy sits at the bottom as supplementary information.
+- Records has no “前往设置” CTA. Its quiet privacy icon/copy is centered in the usable space between the intro and persistent tabs.
+- Canvas uses a restrained spatial-focus treatment: the selected state breathes gently while unselected states recede progressively by distance. Reduced-motion keeps the hierarchy static.
+- Guided meditation attempts playback on entry. If a browser blocks autoplay, the screen remains error-free and asks for one tap to begin; user pauses and background returns are never overridden.
 - Burn's placeholder stays absent throughout ignition and returns only after the final ember finishes, with a fade. Free placement can use the full right side; handwriting ignition samples actual ink and uses randomized, multi-origin fragmentation comparable to typed burning.
 - Canvas cards are 5–10% taller and selected subtitles 10–15% larger while remaining a single readable line and preserving the existing restrained hierarchy.
 
