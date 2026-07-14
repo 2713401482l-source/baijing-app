@@ -35,13 +35,14 @@ import {
 } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { encounterTracks, knowledgeTopics, states } from "./data.js";
+import { isIOSSafari, shouldOfferIOSInstall, splashDuration } from "./pwa.js";
 import { useLocalStorage } from "./useLocalStorage.js";
 
 const DataContext = createContext(null);
 
 function useAppData() {
-  const [records, setRecords] = useLocalStorage("baijing:records", []);
-  const [settings, setSettings] = useLocalStorage("baijing:settings", {
+  const [records, setRecords] = useLocalStorage("weiding:records", []);
+  const [settings, setSettings] = useLocalStorage("weiding:settings", {
     theme: "dark",
     recordsEnabled: false,
     breathing: true,
@@ -78,8 +79,20 @@ function createId() {
   return `${Date.now().toString(36)}-${[...values].map((value) => value.toString(36)).join("")}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function BrandMark({ className = "", title = "微定标志" }) {
+  return (
+    <svg className={`brand-mark ${className}`} viewBox="0 0 512 512" role={title ? "img" : undefined} aria-label={title || undefined} aria-hidden={title ? undefined : "true"}>
+      <circle className="brand-mark-core" cx="256" cy="256" r="164" />
+      <path className="brand-mark-outer" d="M142 342C94 229 157 103 278 92c94-8 161 67 145 160" />
+      <path className="brand-mark-inner" d="M355 226c-18-70-104-91-158-44-48 42-33 126 25 154" />
+      <path className="brand-mark-rest" d="M142 342c13 31 37 57 68 74" />
+      <circle className="brand-mark-node" cx="222" cy="336" r="24" />
+    </svg>
+  );
+}
+
 function FunctionSeal({ children }) {
-  return <span className="function-seal"><span aria-hidden="true">白</span><b>-{children}</b></span>;
+  return <span className="function-seal"><span aria-hidden="true"><BrandMark title="" /></span><b>-{children}</b></span>;
 }
 
 function TopLevelIntro({ title, subtitle, section }) {
@@ -92,7 +105,7 @@ function TopLevelIntro({ title, subtitle, section }) {
   );
 }
 
-function AppHeader({ title = "白境", back = false, onBack, onMenu }) {
+function AppHeader({ title = "微定", back = false, onBack, onMenu }) {
   const navigate = useNavigate();
   return (
     <header className="app-header">
@@ -259,8 +272,9 @@ function CanvasPage() {
               className={`state-title-row ${selectedIndex === index ? "is-selected" : ""}`}
               onClick={() => selectedIndex === index ? navigate(`/states/${state.id}`) : setSelectedIndex(index)}
             >
-              <span className="state-name-line"><span>{state.title}</span>{selectedIndex === index && <CaretRight className="state-enter-cue" size={17} aria-hidden="true" />}</span>
-              {selectedIndex === index && <small>{state.shortDescription ?? state.description}</small>}
+              <span className="state-name-line"><span>{state.title}</span></span>
+              <CaretRight className="state-enter-cue" size={17} aria-hidden="true" />
+              <small aria-hidden={selectedIndex !== index}>{state.shortDescription ?? state.description}</small>
             </button>
           ))}
         </div>
@@ -280,6 +294,7 @@ function CanvasPage() {
           onPointerUp={onPointerUp}
           onPointerCancel={() => setDragging(false)}
           onKeyDown={onKeyDown}
+          style={{ "--selected-index": selectedIndex }}
         >
           <span className="rail-line" aria-hidden="true" />
           {states.map((state, index) => <span key={state.id} className={`rail-stop ${selectedIndex === index ? "is-selected" : ""}`} style={{ top: `${((index + 0.5) / states.length) * 100}%` }} aria-hidden="true" />)}
@@ -522,6 +537,7 @@ function CompletionPage() {
   const chooseFeedback = (value) => {
     if (feedback) return;
     setFeedback(value);
+    try { localStorage.setItem("weiding:install-eligible", "1"); } catch {}
     if (settings.recordsEnabled && !recordedRef.current) {
       recordedRef.current = true;
       setRecords((items) => [{ id: createId(), type: "meditation", stateId, feedback: value, at: new Date().toISOString(), duration: 180 }, ...items]);
@@ -925,7 +941,7 @@ function RecordsPage() {
     <main className="screen library-screen records-screen">
       <TopLevelIntro title={["时间会经过，", "不必留下痕迹。"]} subtitle="记录默认关闭，只有你主动开启后才会留下片刻。" section="时间流转" />
       {!settings.recordsEnabled ? (
-        <div className="records-privacy-note"><ClockCounterClockwise size={25} /><p>白境会守护你的隐私。<br />需要时，可以在设置中主动开启记录。</p></div>
+        <div className="records-privacy-note"><ClockCounterClockwise size={25} /><p>微定会守护你的隐私。<br />需要时，可以在设置中主动开启记录。</p></div>
       ) : records.length === 0 ? (
         <div className="empty-state"><ClockCounterClockwise size={28} /><h1>还没有记录</h1><p>等你完成一次状态调整，这里才会留下时间与反馈。你在阅后即焚里写下的内容，始终不会被保存。</p></div>
       ) : (
@@ -1017,7 +1033,87 @@ function SettingsPage() {
         <p>数据只保存在当前浏览器。清除浏览器数据、卸载 PWA 或更换设备后无法恢复。</p>
         <button className="danger-action" onClick={clearData}><Trash size={18} />清除所有本地数据</button>
       </section>
+      {isIOSSafari() && !navigator.standalone && (
+        <section className="settings-group install-setting">
+          <h2>桌面使用</h2>
+          <button className="install-setting-action" onClick={() => window.dispatchEvent(new CustomEvent("weiding:show-install-guide"))}>
+            <span><strong>添加到主屏幕</strong><small>像普通 App 一样从桌面打开微定</small></span>
+            <CaretRight size={17} />
+          </button>
+        </section>
+      )}
     </main>
+  );
+}
+
+function BrandSplash() {
+  const [visible, setVisible] = useState(() => {
+    try { return sessionStorage.getItem("weiding:splash-seen") !== "1"; } catch { return true; }
+  });
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    if (!visible) return undefined;
+    try { sessionStorage.setItem("weiding:splash-seen", "1"); } catch {}
+    const timer = window.setTimeout(() => setVisible(false), splashDuration(Boolean(reduced)));
+    return () => window.clearTimeout(timer);
+  }, [reduced, visible]);
+  return (
+    <AnimatePresence>
+      {visible && (
+        <motion.div className={`brand-splash ${reduced ? "is-reduced" : ""}`} role="status" aria-label="微定正在打开" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: reduced ? .15 : .24 }}>
+          <div className="brand-splash-lockup">
+            <BrandMark className="brand-splash-mark" title="" />
+            <div className="brand-splash-wordmark">微定</div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function IOSInstallCoachmark() {
+  const location = useLocation();
+  const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    const evaluate = () => {
+      let eligible = false;
+      let dismissedAt = 0;
+      try {
+        eligible = localStorage.getItem("weiding:install-eligible") === "1";
+        dismissedAt = Number(localStorage.getItem("weiding:install-dismissed-at") || 0);
+      } catch {}
+      if (location.pathname === "/" && shouldOfferIOSInstall({ eligible, dismissedAt })) setOpen(true);
+    };
+    const forceOpen = () => { if (isIOSSafari() && !navigator.standalone) { setExpanded(true); setOpen(true); } };
+    evaluate();
+    window.addEventListener("weiding:show-install-guide", forceOpen);
+    return () => window.removeEventListener("weiding:show-install-guide", forceOpen);
+  }, [location.pathname]);
+  const dismiss = () => {
+    try { localStorage.setItem("weiding:install-dismissed-at", String(Date.now())); } catch {}
+    setOpen(false);
+    setExpanded(false);
+  };
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.aside className={`install-coachmark ${expanded ? "is-expanded" : ""}`} aria-label="添加微定到主屏幕" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ duration: .24, ease: [0.22, 1, 0.36, 1] }}>
+          <button className="install-dismiss" onClick={dismiss} aria-label="暂不添加"><X size={17} /></button>
+          <BrandMark className="install-brand-mark" title="" />
+          <div className="install-coachmark-copy">
+            <strong>如果愿意，可以把微定留在桌面。</strong>
+            {!expanded ? <button onClick={() => setExpanded(true)}>查看方法</button> : (
+              <ol>
+                <li><span>1</span>轻触 Safari 的“分享”按钮</li>
+                <li><span>2</span>选择“添加到主屏幕”</li>
+                <li><span>3</span>开启“作为网页 App 打开”并添加</li>
+              </ol>
+            )}
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -1195,6 +1291,7 @@ function AppRoutes() {
         <Route path="/records" element={<RecordsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes></motion.div></AnimatePresence>
+      <IOSInstallCoachmark />
       <PersistentTabBar />
     </div>
   );
@@ -1203,7 +1300,7 @@ function AppRoutes() {
 export function App() {
   return (
     <HashRouter>
-      <DataProvider><AppRoutes /></DataProvider>
+      <DataProvider><AppRoutes /><BrandSplash /></DataProvider>
     </HashRouter>
   );
 }

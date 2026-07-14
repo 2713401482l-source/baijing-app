@@ -7,7 +7,7 @@
     <meta name="color-scheme" content="dark light" />
     <script>
       try {
-        const saved = JSON.parse(localStorage.getItem("baijing:settings") || "null");
+        const saved = JSON.parse(localStorage.getItem("weiding:settings") || "null");
         const preference = saved?.theme || "dark";
         document.documentElement.dataset.theme = preference === "system"
           ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
@@ -18,12 +18,12 @@
     </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="白境" />
-    <meta name="description" content="白境，一款克制、安静、本地优先的情绪自助工具。" />
+    <meta name="apple-mobile-web-app-title" content="微定" />
+    <meta name="description" content="微定，一款克制、安静、本地优先的情绪自助工具。" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" href="./icon-192.png" />
-    <link rel="apple-touch-icon" href="./icon-192.png" />
-    <title>白境</title>
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>微定</title>
   </head>
   <body>
     <div id="root"></div>

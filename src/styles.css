@@ -181,6 +181,155 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   .app-header{min-height:64px;padding-top:max(env(safe-area-inset-top,0px),4px)}
   .meditation-meta{padding-top:2px}.affirmation-stage{min-height:220px;transform:none}.breath-orb{width:180px;height:180px}.immersive-control-area{min-height:190px}
 }
+
+/* v11 — 微定 identity, stable state geometry and first-run guidance */
+.brand-mark{display:block;overflow:visible}
+.brand-mark-core{fill:color-mix(in srgb,var(--surface) 88%,var(--bg))}
+.brand-mark-outer,.brand-mark-inner,.brand-mark-rest{fill:none;stroke-linecap:round}
+.brand-mark-outer{stroke:var(--ink);stroke-width:30}
+.brand-mark-inner{stroke:color-mix(in srgb,var(--bg) 88%,#000);stroke-width:40}
+.brand-mark-rest{stroke:var(--line-strong);stroke-width:30}
+.brand-mark-node{fill:var(--accent)}
+
+.function-seal>span{border:0;width:22px;height:22px;margin-right:7px}
+.function-seal>span .brand-mark{width:22px;height:22px}
+
+.state-selector.vertical{grid-template-columns:minmax(0,1fr) 44px;column-gap:12px}
+.state-title-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 28px;
+  grid-template-rows:auto minmax(17px,auto);
+  align-content:center;
+  align-items:center;
+  padding:6px 4px 6px 12px;
+  transform:none!important;
+  transform-origin:center;
+  opacity:.88;
+}
+.state-title-row:not(.is-selected){transform:none!important;opacity:.88}
+.state-title-row.is-selected{font-size:22px;transform:none!important;opacity:1}
+.state-title-row:before{
+  inset:2px -52px 2px 0;
+  border:0!important;
+  border-radius:12px;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line-strong) 16%,transparent)!important;
+}
+.state-title-row.is-selected:before{animation:state-surface-breathe-balanced 5.8s cubic-bezier(.45,0,.55,1) infinite}
+.state-name-line{grid-column:1;grid-row:1;width:100%;padding:0;display:block;min-width:0}
+.state-enter-cue{
+  position:static;
+  grid-column:2;
+  grid-row:1/3;
+  align-self:center;
+  justify-self:center;
+  transform:translateX(2px);
+  opacity:0;
+  color:var(--accent);
+  pointer-events:none;
+  transition:opacity .2s ease,transform .28s cubic-bezier(.22,1,.36,1);
+  animation:none;
+}
+.state-title-row.is-selected .state-enter-cue{opacity:.92;transform:translateX(0)}
+.state-title-row small{
+  grid-column:1;
+  grid-row:2;
+  width:100%;
+  max-width:none;
+  min-height:17px;
+  margin-top:2px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:clip;
+  opacity:0;
+  visibility:hidden;
+  animation:none;
+}
+.state-title-row.is-selected small{
+  visibility:visible;
+  animation:subtitle-reveal .45s cubic-bezier(.22,1,.36,1) forwards,state-subtitle-breathe 5.8s .45s cubic-bezier(.45,0,.55,1) infinite;
+}
+.rail-line:after{
+  content:"";
+  position:absolute;
+  left:0;
+  width:1px;
+  height:calc(100% / 6);
+  top:calc(var(--selected-index) * 100% / 6);
+  background:var(--accent);
+  transform:scaleY(.72);
+  transform-origin:center;
+  opacity:.5;
+  transition:top .38s cubic-bezier(.22,1,.36,1);
+  animation:state-track-breathe 5.8s cubic-bezier(.45,0,.55,1) infinite;
+}
+@keyframes state-surface-breathe-balanced{
+  0%,100%{background-color:color-mix(in srgb,var(--accent) 6%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 10%,transparent)}
+  50%{background-color:color-mix(in srgb,var(--accent) 9%,var(--surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 20%,transparent)}
+}
+@keyframes state-track-breathe{0%,100%{opacity:.38;transform:scaleY(.7)}50%{opacity:.88;transform:scaleY(.94)}}
+
+.brand-splash{
+  position:absolute;
+  inset:0;
+  z-index:100;
+  display:grid;
+  place-items:center;
+  background:#171817;
+  color:#efeee9;
+}
+.brand-splash-lockup{display:flex;flex-direction:column;align-items:center;gap:22px;transform:translateY(-2vh)}
+.brand-splash-mark{width:132px;height:132px;--bg:#171817;--surface:#20211f;--ink:#e8e4dc;--line-strong:#555650;--accent:#c96955}
+.brand-splash-mark .brand-mark-core{opacity:0;animation:splash-core-in .4s .08s cubic-bezier(.22,1,.36,1) forwards}
+.brand-splash-mark .brand-mark-outer,.brand-splash-mark .brand-mark-rest,.brand-splash-mark .brand-mark-inner{stroke-dasharray:900;stroke-dashoffset:900;animation:splash-track-in .76s .2s cubic-bezier(.22,1,.36,1) forwards}
+.brand-splash-mark .brand-mark-inner{animation-delay:.32s}
+.brand-splash-mark .brand-mark-node{transform-box:fill-box;transform-origin:center;opacity:0;animation:splash-node-settle .72s .66s cubic-bezier(.22,1,.36,1) forwards}
+.brand-splash-wordmark{font-family:var(--font-narrative);font-size:24px;letter-spacing:.32em;text-indent:.32em;opacity:0;animation:splash-wordmark-in .42s 1.24s ease-out forwards}
+@keyframes splash-core-in{from{opacity:0;transform:scale(.94);transform-origin:center}to{opacity:1;transform:scale(1)}}
+@keyframes splash-track-in{to{stroke-dashoffset:0}}
+@keyframes splash-node-settle{0%{opacity:0;transform:translate(34px,-20px) scale(.72)}65%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes splash-wordmark-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.install-coachmark{
+  position:absolute;
+  z-index:40;
+  left:max(20px,env(safe-area-inset-left,0px));
+  right:max(20px,env(safe-area-inset-right,0px));
+  bottom:calc(102px + env(safe-area-inset-bottom,0px));
+  min-height:74px;
+  padding:14px 42px 14px 14px;
+  display:grid;
+  grid-template-columns:38px 1fr;
+  align-items:start;
+  gap:12px;
+  border-radius:14px;
+  background:color-mix(in srgb,var(--surface) 96%,var(--bg));
+  box-shadow:0 8px 16px rgb(0 0 0/.18);
+}
+.install-brand-mark{width:36px;height:36px;margin-top:2px}
+.install-dismiss{position:absolute;right:8px;top:8px;width:36px;height:36px;border:0;background:transparent;display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.install-coachmark-copy{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.install-coachmark-copy strong{font-family:var(--font-ui);font-size:12px;line-height:1.65;font-weight:500;color:var(--ink)}
+.install-coachmark-copy>button{min-height:32px;padding:0;border:0;background:transparent;color:var(--accent);font-family:var(--font-ui);font-size:11px;cursor:pointer}
+.install-coachmark ol{list-style:none;margin:2px 0 4px;padding:0;display:grid;gap:9px;color:var(--muted);font-family:var(--font-ui);font-size:11px;line-height:1.5}
+.install-coachmark li{display:grid;grid-template-columns:20px 1fr;gap:7px;align-items:start}
+.install-coachmark li span{width:18px;height:18px;border:1px solid var(--line-strong);border-radius:50%;display:grid;place-items:center;color:var(--accent);font-size:9px}
+.install-setting-action{width:100%;min-height:64px;padding:10px 0;border:0;background:transparent;display:grid;grid-template-columns:1fr auto;align-items:center;text-align:left;cursor:pointer}
+.install-setting-action>span{display:flex;flex-direction:column;gap:5px}
+.install-setting-action strong{font-family:var(--font-ui);font-size:13px;font-weight:500}
+.install-setting-action small{color:var(--muted);font-family:var(--font-ui);font-size:10px}
+
+@media(max-width:359px){
+  .state-title-row{padding-left:8px}
+  .state-title-row.is-selected{font-size:20px}
+  .state-title-row small{font-size:10px}
+  .state-title-row:before{right:-44px}
+  .brand-splash-mark{width:116px;height:116px}
+}
+@media(prefers-reduced-motion:reduce){
+  .state-title-row.is-selected:before,.state-title-row.is-selected small,.rail-line:after{animation:none!important}
+  .state-enter-cue{transition:none}
+  .brand-splash-mark *,.brand-splash-wordmark{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}
+}
 @media(forced-colors:active){.function-seal>span,.rail-stop,.toggle:before,.play-button,.end-session-action{border:1px solid CanvasText}.tab-active-surface{background:Highlight}.state-title-row.is-selected{outline:1px solid Highlight}}
 
 /* v5 — compact detail rhythm, one-screen meditation and deliberate Burn input */
@@ -255,8 +404,8 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   box-shadow:0 0 0 32px color-mix(in srgb,var(--line) 14%,transparent),0 0 0 64px color-mix(in srgb,var(--line) 6%,transparent);
   will-change:transform,opacity,background-color,border-color,box-shadow;
 }
-.breath-orb.is-breathing{animation:baijing-breathe 8s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes baijing-breathe{
+.breath-orb.is-breathing{animation:weiding-breathe 8s cubic-bezier(.45,0,.55,1) infinite}
+@keyframes weiding-breathe{
   0%,100%{transform:scale(.94);opacity:.72;background-color:color-mix(in srgb,var(--surface) 88%,var(--line));border-color:var(--line-strong);box-shadow:0 0 0 28px color-mix(in srgb,var(--line) 13%,transparent),0 0 0 56px color-mix(in srgb,var(--line) 5%,transparent)}
   50%{transform:scale(1.04);opacity:1;background-color:color-mix(in srgb,var(--accent) 7%,var(--surface));border-color:color-mix(in srgb,var(--accent) 58%,var(--line));box-shadow:0 0 0 34px color-mix(in srgb,var(--accent) 7%,transparent),0 0 0 68px color-mix(in srgb,var(--accent) 3%,transparent)}
 }
@@ -631,4 +780,39 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   .encounter-screen .sound-rings{width:118px;height:118px;margin-top:12px}
   .encounter-screen .encounter-play{margin:-4px auto 0}
   .encounter-screen .text-action{margin-top:0}
+}
+
+/* v11 final cascade — keep the six-state skeleton optically fixed */
+.function-seal>span{width:22px;height:22px;margin-right:7px;border:0}
+.function-seal>span .brand-mark{width:22px;height:22px}
+.canvas-screen .state-selector.vertical{grid-template-columns:minmax(0,1fr) 44px;column-gap:12px}
+.state-title-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 28px;
+  grid-template-rows:auto minmax(17px,auto);
+  align-content:center;
+  align-items:center;
+  padding-left:12px;
+  padding-right:4px;
+  transform:none!important;
+  transform-origin:center;
+}
+.state-title-row:not(.is-selected),.state-title-row.is-selected{transform:none!important}
+.state-title-row.is-selected{font-size:22px}
+.state-title-row:before{inset:2px -52px 2px 0;border:0!important;border-radius:12px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line-strong) 16%,transparent)!important}
+.state-title-row.is-selected:before{animation:state-surface-breathe-balanced 5.8s cubic-bezier(.45,0,.55,1) infinite}
+.state-name-line{grid-column:1;grid-row:1;width:100%;padding:0;display:block}
+.state-enter-cue{position:static;grid-column:2;grid-row:1/3;align-self:center;justify-self:center;opacity:0;transform:translateX(2px);animation:none}
+.state-title-row.is-selected .state-enter-cue{opacity:.92;transform:none}
+.state-title-row small{grid-column:1;grid-row:2;width:100%;min-height:17px;margin-top:2px;white-space:nowrap;visibility:hidden;opacity:0;animation:none}
+.state-title-row.is-selected small{visibility:visible;animation:subtitle-reveal .45s cubic-bezier(.22,1,.36,1) forwards,state-subtitle-breathe 5.8s .45s cubic-bezier(.45,0,.55,1) infinite}
+.state-title-row:focus-visible{outline:0}
+.state-title-row:focus-visible:before{
+  opacity:1;
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 56%,transparent),0 0 0 3px color-mix(in srgb,var(--accent) 10%,transparent)!important;
+}
+@media(max-width:359px){.state-title-row{padding-left:8px}.state-title-row.is-selected{font-size:20px}.state-title-row:before{right:-44px}}
+@media(prefers-reduced-motion:reduce){
+  .state-title-row.is-selected:before,.state-title-row.is-selected small,.rail-line:after{animation:none!important}
+  .state-title-row.is-selected small{opacity:1!important}
 }
