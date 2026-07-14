@@ -257,7 +257,6 @@ function CanvasPage() {
               role="option"
               aria-selected={selectedIndex === index}
               className={`state-title-row ${selectedIndex === index ? "is-selected" : ""}`}
-              data-focus-distance={Math.abs(selectedIndex - index)}
               onClick={() => selectedIndex === index ? navigate(`/states/${state.id}`) : setSelectedIndex(index)}
             >
               <span className="state-name-line"><span>{state.title}</span>{selectedIndex === index && <CaretRight className="state-enter-cue" size={17} aria-hidden="true" />}</span>
