@@ -82,11 +82,10 @@ function createId() {
 function BrandMark({ className = "", title = "微定标志" }) {
   return (
     <svg className={`brand-mark ${className}`} viewBox="0 0 512 512" role={title ? "img" : undefined} aria-label={title || undefined} aria-hidden={title ? undefined : "true"}>
-      <circle className="brand-mark-core" cx="256" cy="256" r="164" />
-      <path className="brand-mark-outer" d="M142 342C94 229 157 103 278 92c94-8 161 67 145 160" />
-      <path className="brand-mark-inner" d="M355 226c-18-70-104-91-158-44-48 42-33 126 25 154" />
-      <path className="brand-mark-rest" d="M142 342c13 31 37 57 68 74" />
-      <circle className="brand-mark-node" cx="222" cy="336" r="24" />
+      <circle className="brand-mark-core" cx="256" cy="256" r="146" />
+      <circle className="brand-mark-outer" cx="256" cy="256" r="170" pathLength="100" />
+      <circle className="brand-mark-inner" cx="256" cy="256" r="104" pathLength="100" />
+      <circle className="brand-mark-node" cx="337" cy="330" r="20" />
     </svg>
   );
 }

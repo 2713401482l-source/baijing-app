@@ -184,11 +184,10 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 
 /* v11 — 微定 identity, stable state geometry and first-run guidance */
 .brand-mark{display:block;overflow:visible}
-.brand-mark-core{fill:color-mix(in srgb,var(--surface) 88%,var(--bg))}
-.brand-mark-outer,.brand-mark-inner,.brand-mark-rest{fill:none;stroke-linecap:round}
-.brand-mark-outer{stroke:var(--ink);stroke-width:30}
-.brand-mark-inner{stroke:color-mix(in srgb,var(--bg) 88%,#000);stroke-width:40}
-.brand-mark-rest{stroke:var(--line-strong);stroke-width:30}
+.brand-mark-core{fill:color-mix(in srgb,var(--surface) 72%,var(--bg))}
+.brand-mark-outer,.brand-mark-inner{fill:none;stroke-linecap:round}
+.brand-mark-outer{stroke:var(--ink);stroke-width:28;stroke-linecap:butt;stroke-dasharray:95 5;transform:rotate(40deg);transform-origin:256px 256px}
+.brand-mark-inner{stroke:color-mix(in srgb,var(--line-strong) 64%,var(--bg));stroke-width:22;stroke-dasharray:72 28;transform:rotate(128deg);transform-origin:256px 256px}
 .brand-mark-node{fill:var(--accent)}
 
 .function-seal>span{border:0;width:22px;height:22px;margin-right:7px}
@@ -280,12 +279,12 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 .brand-splash-lockup{display:flex;flex-direction:column;align-items:center;gap:22px;transform:translateY(-2vh)}
 .brand-splash-mark{width:132px;height:132px;--bg:#171817;--surface:#20211f;--ink:#e8e4dc;--line-strong:#555650;--accent:#c96955}
 .brand-splash-mark .brand-mark-core{opacity:0;animation:splash-core-in .4s .08s cubic-bezier(.22,1,.36,1) forwards}
-.brand-splash-mark .brand-mark-outer,.brand-splash-mark .brand-mark-rest,.brand-splash-mark .brand-mark-inner{stroke-dasharray:900;stroke-dashoffset:900;animation:splash-track-in .76s .2s cubic-bezier(.22,1,.36,1) forwards}
+.brand-splash-mark .brand-mark-outer,.brand-splash-mark .brand-mark-inner{opacity:0;animation:splash-track-in .68s .2s cubic-bezier(.22,1,.36,1) forwards}
 .brand-splash-mark .brand-mark-inner{animation-delay:.32s}
 .brand-splash-mark .brand-mark-node{transform-box:fill-box;transform-origin:center;opacity:0;animation:splash-node-settle .72s .66s cubic-bezier(.22,1,.36,1) forwards}
 .brand-splash-wordmark{font-family:var(--font-narrative);font-size:24px;letter-spacing:.32em;text-indent:.32em;opacity:0;animation:splash-wordmark-in .42s 1.24s ease-out forwards}
 @keyframes splash-core-in{from{opacity:0;transform:scale(.94);transform-origin:center}to{opacity:1;transform:scale(1)}}
-@keyframes splash-track-in{to{stroke-dashoffset:0}}
+@keyframes splash-track-in{from{opacity:0;filter:blur(2px)}to{opacity:1;filter:none}}
 @keyframes splash-node-settle{0%{opacity:0;transform:translate(34px,-20px) scale(.72)}65%{opacity:1}100%{opacity:1;transform:none}}
 @keyframes splash-wordmark-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
 
