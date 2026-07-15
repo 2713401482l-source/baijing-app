@@ -785,6 +785,29 @@ function useAmbientDetails(track, playing, reducedEffects) {
   }, [playing, reducedEffects, track?.category, track?.detail, track?.id]);
 }
 
+let primedEncounterAudio = null;
+
+function createEncounterAudio(track) {
+  const audio = new Audio(track.src);
+  audio.preload = "metadata";
+  audio.loop = Boolean(track.loop);
+  audio.volume = track.category === "nature" ? .48 : .56;
+  return audio;
+}
+
+function primeEncounterAudio(track) {
+  if (primedEncounterAudio?.audio) {
+    if (primedEncounterAudio.cleanupTimer) window.clearTimeout(primedEncounterAudio.cleanupTimer);
+    primedEncounterAudio.audio.pause();
+    primedEncounterAudio.audio.removeAttribute("src");
+    primedEncounterAudio.audio.load();
+  }
+  const audio = createEncounterAudio(track);
+  const playPromise = audio.play();
+  primedEncounterAudio = { trackId: track.id, audio, playPromise, cleanupTimer: null };
+  playPromise.catch(() => {});
+}
+
 function useEncounterAudio(track) {
   const audioRef = useRef(null);
   const loadTimeoutRef = useRef(null);
@@ -794,10 +817,12 @@ function useEncounterAudio(track) {
   const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     if (!track) return undefined;
-    const audio = new Audio(track.src);
-    audio.preload = "metadata";
-    audio.loop = Boolean(track.loop);
-    audio.volume = track.category === "nature" ? .48 : .56;
+    const primed = primedEncounterAudio?.trackId === track.id ? primedEncounterAudio : null;
+    const audio = primed?.audio ?? createEncounterAudio(track);
+    if (primed?.cleanupTimer) {
+      window.clearTimeout(primed.cleanupTimer);
+      primed.cleanupTimer = null;
+    }
     const onTime = () => setElapsed(audio.currentTime || 0);
     const onEnded = () => setPlaying(false);
     const clearLoadTimeout = () => {
@@ -809,11 +834,45 @@ function useEncounterAudio(track) {
     audio.addEventListener("ended", onEnded);
     audio.addEventListener("error", onError);
     audioRef.current = audio;
-    setElapsed(0); setFailed(false); setPlaying(false);
+    setElapsed(0); setFailed(false); setPlaying(false); setLoading(Boolean(primed));
+    if (primed) {
+      loadTimeoutRef.current = window.setTimeout(() => {
+        audio.pause();
+        setPlaying(false);
+        setLoading(false);
+        setFailed(true);
+        loadTimeoutRef.current = null;
+      }, 9000);
+      primed.playPromise.then(() => {
+        clearLoadTimeout();
+        if (primedEncounterAudio?.audio === audio) primedEncounterAudio = null;
+        setPlaying(true);
+        setLoading(false);
+      }).catch((error) => {
+        clearLoadTimeout();
+        if (primedEncounterAudio?.audio === audio) primedEncounterAudio = null;
+        setPlaying(false);
+        setLoading(false);
+        if (error?.name !== "NotAllowedError") setFailed(true);
+      });
+    }
     return () => {
       clearLoadTimeout();
-      audio.pause(); audio.removeAttribute("src"); audio.load();
       audio.removeEventListener("timeupdate", onTime); audio.removeEventListener("ended", onEnded); audio.removeEventListener("error", onError);
+      const releaseAudio = () => {
+        audio.pause(); audio.removeAttribute("src"); audio.load();
+      };
+      // React StrictMode mounts effects twice in development. Keep a just-primed
+      // audio instance alive for one task so the second mount can adopt it and
+      // the original user gesture is not lost.
+      if (primedEncounterAudio?.audio === audio) {
+        primedEncounterAudio.cleanupTimer = window.setTimeout(() => {
+          if (primedEncounterAudio?.audio === audio) primedEncounterAudio = null;
+          releaseAudio();
+        }, 0);
+      } else {
+        releaseAudio();
+      }
     };
   }, [track]);
   const toggle = () => {
@@ -850,6 +909,7 @@ function EncounterPage() {
   const choose = (category, excludeId) => {
     const pool = encounterTracks.filter((item) => item.category === category && item.id !== excludeId);
     const next = pool[Math.floor(Math.random() * pool.length)] ?? encounterTracks.find((item) => item.category === category);
+    primeEncounterAudio(next);
     setTrack(next);
   };
   const leave = () => {
