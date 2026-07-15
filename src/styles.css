@@ -814,3 +814,94 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   .state-title-row.is-selected:before,.state-title-row.is-selected small,.rail-line:after{animation:none!important}
   .state-title-row.is-selected small{opacity:1!important}
 }
+
+/* v12 — content-driven adaptation for short phones, landscape and tablets */
+.burn-screen{
+  overflow:hidden;
+}
+.burn-canvas{
+  min-height:0;
+}
+.keyboard-open .burn-screen>.top-level-intro{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+}
+.keyboard-open .burn-mode-switch{
+  flex:0 0 auto;
+  margin-top:max(8px,env(safe-area-inset-top,0px));
+}
+
+/* A tablet keeps the intimate single-column experience, but no longer looks
+   like a narrow phone mock-up floating in the middle of the display. */
+@media(min-width:600px) and (min-height:640px){
+  :root{--gutter:48px}
+  .mobile-prototype{width:min(100vw,560px)}
+  .top-level-intro h1{max-width:390px}
+  .top-level-intro p{max-width:360px}
+  .canvas-screen .state-selector.vertical{grid-template-columns:minmax(0,1fr) 48px}
+  .state-title-row{padding-left:16px}
+  .persistent-tabs{left:20px;right:20px}
+}
+
+@media(orientation:landscape) and (max-height:600px){
+  /* Burn becomes a real two-pane workspace instead of a tall portrait page
+     that happens to be viewed sideways. */
+  .burn-screen{
+    display:grid;
+    grid-template-columns:minmax(230px,.72fr) minmax(330px,1.28fr);
+    grid-template-rows:minmax(0,1fr) auto;
+    column-gap:clamp(24px,5vw,56px);
+    padding-bottom:calc(72px + env(safe-area-inset-bottom,0px));
+  }
+  .burn-screen>.top-level-intro{
+    grid-column:1;
+    grid-row:1;
+    align-self:center;
+    padding-top:max(12px,env(safe-area-inset-top,0px));
+  }
+  .burn-screen .top-level-intro h1{font-size:25px;line-height:1.42}
+  .burn-screen .top-level-intro p{font-size:11px}
+  .burn-screen .burn-mode-switch{
+    grid-column:1;
+    grid-row:2;
+    align-self:end;
+    margin:0 0 10px;
+  }
+  .burn-screen .burn-canvas{
+    grid-column:2;
+    grid-row:1/3;
+    align-self:stretch;
+    min-height:0;
+    margin:8px 0 0;
+  }
+
+  /* Scene choice uses the same two-zone logic as the landscape player. */
+  .detail-screen{
+    display:grid;
+    grid-template-columns:minmax(250px,.82fr) minmax(340px,1.18fr);
+    grid-template-rows:auto minmax(0,1fr);
+    column-gap:clamp(28px,5vw,64px);
+    overflow:hidden;
+    padding-bottom:max(10px,env(safe-area-inset-bottom,0px));
+  }
+  .detail-screen .app-header{grid-column:1;grid-row:1;min-height:52px}
+  .detail-screen .detail-hero{
+    grid-column:1;
+    grid-row:2;
+    align-self:center;
+    padding:4px 0 14px;
+  }
+  .detail-screen .detail-hero h1{margin:10px 0 6px;font-size:23px;line-height:1.5}
+  .detail-screen .detail-hero p{font-size:11px;line-height:1.7}
+  .detail-screen .scene-list{
+    grid-column:2;
+    grid-row:1/3;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:none;
+  }
+  .detail-screen .scene-list::-webkit-scrollbar{display:none}
+  .detail-screen .scene-list button{min-height:58px;padding-block:8px}
+}
