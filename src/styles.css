@@ -904,3 +904,83 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   .detail-screen .scene-list::-webkit-scrollbar{display:none}
   .detail-screen .scene-list button{min-height:58px;padding-block:8px}
 }
+
+/* Psychology library — progressive two-depth reading */
+.article-reading-switch{
+  position:relative;
+  margin:24px 0 4px;
+  padding:3px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:3px;
+  border-radius:12px;
+  background:color-mix(in srgb,var(--surface) 74%,var(--bg));
+}
+.article-reading-switch button{
+  min-height:58px;
+  padding:8px 10px;
+  border:0;
+  border-radius:9px;
+  background:transparent;
+  color:var(--muted);
+  display:grid;
+  place-content:center;
+  gap:3px;
+  text-align:center;
+  cursor:pointer;
+  transition:color .2s ease,background-color .24s cubic-bezier(.22,1,.36,1),box-shadow .24s cubic-bezier(.22,1,.36,1);
+}
+.article-reading-switch button strong{font-family:var(--font-ui);font-size:12px;font-weight:500;letter-spacing:.025em}
+.article-reading-switch button span{font-family:var(--font-ui);font-size:9px;letter-spacing:.02em}
+.article-reading-switch button[aria-selected="true"]{
+  color:var(--ink);
+  background:var(--surface);
+  box-shadow:0 2px 8px rgb(0 0 0/.08);
+}
+.article-reading-layer{min-height:390px}
+.article-reading-layer>section:first-child{padding-top:25px}
+.psychology-article .article-practice p{color:var(--ink)}
+.psychology-article .reading-layer-note{
+  margin:28px 0 0;
+  color:var(--subtle);
+  font-family:var(--font-ui);
+  font-size:10px;
+  line-height:1.8;
+  letter-spacing:.015em;
+}
+.psychology-article .evidence-explainer>div{
+  margin:2px 0 15px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.psychology-article .evidence-explainer>div span{
+  padding:4px 7px;
+  border:1px solid var(--line-strong);
+  border-radius:999px;
+  color:var(--muted);
+  font-family:var(--font-ui);
+  font-size:9px;
+  white-space:nowrap;
+}
+.psychology-article .evidence-explainer>div strong{
+  color:var(--ink);
+  font-family:var(--font-ui);
+  font-size:13px;
+  font-weight:500;
+}
+.psychology-article .evidence-explainer small{
+  display:block;
+  margin-top:14px;
+  color:var(--subtle);
+  font-family:var(--font-ui);
+  font-size:10px;
+  line-height:1.75;
+}
+.knowledge-evidence{font-family:var(--font-ui);font-size:9px}
+@media(max-width:359px){
+  .article-reading-switch{margin-top:20px}
+  .article-reading-switch button{min-height:54px}
+  .article-reading-layer{min-height:360px}
+}
+@media(prefers-reduced-motion:reduce){.article-reading-switch button{transition:none}}

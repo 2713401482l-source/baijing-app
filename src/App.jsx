@@ -948,6 +948,20 @@ function EncounterPage() {
 
 const knowledgeEntries = knowledgeTopics.flatMap((topic) => topic.items.map((item) => ({ ...item, group: topic.group })));
 
+const evidenceTypes = {
+  "Level A+": { label: "权威综合证据", detail: "来自权威指南、伞状综述或个体数据荟萃分析。" },
+  "Level A": { label: "综合研究", detail: "主要依据荟萃分析或对多项荟萃分析的综合回顾。" },
+  "Level B": { label: "系统综述", detail: "主要依据系统综述或高质量叙述性综述。" },
+  "Level C": { label: "实验研究", detail: "主要依据随机对照研究或其他实验研究。" },
+  "Level D": { label: "观察研究", detail: "主要依据观察性研究、测量研究或机制研究。" },
+  "Level E": { label: "理论基础", detail: "主要依据奠基性理论、概念论文或专业著作。" },
+  "Public Resource": { label: "公共专业资料", detail: "主要依据公共卫生机构或专业组织发布的资料。" },
+};
+
+function getEvidenceType(level) {
+  return evidenceTypes[level] ?? { label: "研究资料", detail: "依据项目文献库中对应主题的研究资料整理。" };
+}
+
 function PsychologyLibraryPage() {
   return (
     <main className="screen index-screen">
@@ -960,7 +974,7 @@ function PsychologyLibraryPage() {
       {knowledgeTopics.map((topic) => <section className="knowledge-group" key={topic.group}><h2>{topic.group}</h2><div className="term-list">{topic.items.map((item) => (
         <Link key={item.id} className="knowledge-link" to={`/psychology-library/${item.id}`}>
           <span><strong>{item.term}</strong><small>{item.summary}</small></span>
-          <span className="knowledge-evidence">{item.evidence}</span>
+          <span className="knowledge-evidence">{getEvidenceType(item.evidence).label}</span>
           <CaretRight size={18} />
         </Link>
       ))}</div></section>)}
@@ -971,25 +985,74 @@ function PsychologyLibraryPage() {
 function PsychologyArticlePage() {
   const { articleId } = useParams();
   const item = knowledgeEntries.find((entry) => entry.id === articleId) ?? knowledgeEntries[0];
+  const { settings } = useData();
+  const prefersReducedMotion = useReducedMotion();
+  const [readingMode, setReadingMode] = useState("quick");
+  const evidence = getEvidenceType(item.evidence);
+  const reduceReadingMotion = prefersReducedMotion || settings.reducedEffects;
+  useEffect(() => setReadingMode("quick"), [item.id]);
+  const moveReadingTab = (event) => {
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+    event.preventDefault();
+    const nextMode = readingMode === "quick" ? "deep" : "quick";
+    setReadingMode(nextMode);
+    window.requestAnimationFrame(() => document.getElementById(`reading-${nextMode}-tab`)?.focus());
+  };
   return (
     <main className="screen psychology-article-screen">
       <AppHeader title={item.term} back />
       <article className="psychology-article">
         <header>
-          <span>{item.group} · {item.evidence}</span>
+          <span>{item.group} · {evidence.label}</span>
           <h1>{item.term}</h1>
           <p>{item.summary}</p>
         </header>
-        <section><h2>它如何发生</h2><p>{item.mechanism}</p></section>
-        <section><h2>日常中可能怎样出现</h2><ul>{item.signs?.map((sign) => <li key={sign}>{sign}</li>)}</ul></section>
-        <section><h2>可以尝试怎样观察</h2><p>{item.practice}</p></section>
-        <aside><strong>常见误解</strong><p>{item.myth}</p></aside>
-        <section><h2>需要保留的边界</h2><p>{item.boundary}</p></section>
-        <footer>
-          <span>主要参考</span>
-          <cite>{item.source}</cite>
-          <p>证据等级沿用项目文献库标注。本文是面向公众的概念解释，不构成医学或心理诊断。</p>
-        </footer>
+        <div className="article-reading-switch" role="tablist" aria-label="阅读深度">
+          <button type="button" role="tab" id="reading-quick-tab" aria-selected={readingMode === "quick"} aria-controls="reading-quick-panel" tabIndex={readingMode === "quick" ? 0 : -1} onKeyDown={moveReadingTab} onClick={() => setReadingMode("quick")}>
+            <strong>30秒理解</strong><span>先抓住核心</span>
+          </button>
+          <button type="button" role="tab" id="reading-deep-tab" aria-selected={readingMode === "deep"} aria-controls="reading-deep-panel" tabIndex={readingMode === "deep" ? 0 : -1} onKeyDown={moveReadingTab} onClick={() => setReadingMode("deep")}>
+            <strong>深入阅读</strong><span>机制与证据</span>
+          </button>
+        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            className="article-reading-layer"
+            key={readingMode}
+            id={`reading-${readingMode}-panel`}
+            role="tabpanel"
+            aria-labelledby={`reading-${readingMode}-tab`}
+            initial={reduceReadingMotion ? false : { opacity: 0, y: 7, filter: "blur(3px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={reduceReadingMotion ? { opacity: 0 } : { opacity: 0, y: -4, filter: "blur(2px)" }}
+            transition={{ duration: reduceReadingMotion ? .08 : .24, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {readingMode === "quick" ? (
+              <>
+                <section><h2>日常中可能怎样出现</h2><ul>{item.signs?.map((sign) => <li key={sign}>{sign}</li>)}</ul></section>
+                <section className="article-practice"><h2>可以先怎样观察</h2><p>{item.practice}</p></section>
+                <aside><strong>别急着这样理解</strong><p>{item.myth}</p></aside>
+                <p className="reading-layer-note">这里提供的是理解线索，不是对你个人情况的判断。</p>
+              </>
+            ) : (
+              <>
+                <section><h2>它如何发生</h2><p>{item.mechanism}</p></section>
+                <section><h2>需要保留的边界</h2><p>{item.boundary}</p></section>
+                <section className="evidence-explainer" aria-labelledby="evidence-heading">
+                  <h2 id="evidence-heading">这篇内容依据什么</h2>
+                  <div><span>{item.evidence}</span><strong>{evidence.label}</strong></div>
+                  <p>{evidence.detail}</p>
+                  <small>等级描述的是资料类型，不代表它能直接判断某个人，也不等同于治疗效果等级。</small>
+                </section>
+                <footer>
+                  <span>主要参考</span>
+                  <cite>{item.source}</cite>
+                  <p>内容沿用项目文献库整理，仅用于心理教育，不构成医学或心理诊断。</p>
+                </footer>
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </article>
     </main>
   );
