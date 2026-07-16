@@ -37,24 +37,28 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { encounterTracks, knowledgeTopics, states } from "./data.js";
 import { guidedAudioPool } from "./guidedAudio.js";
 import { isIOSSafari, lockPortraitOrientation, shouldOfferIOSInstall, splashDuration } from "./pwa.js";
+import { createMeditationRecord, getFeedbackLabel, getRecordScene, getRecordState, getRecordSummary, getRecordTitle } from "./records.js";
 import { useLocalStorage } from "./useLocalStorage.js";
 
 const DataContext = createContext(null);
 
+const defaultSettings = {
+  theme: "dark",
+  recordsEnabled: true,
+  breathing: true,
+  haptics: true,
+  interfaceSounds: true,
+  reducedEffects: false,
+  voiceVolume: 0.72,
+  ambienceVolume: 0.42,
+  fullscreen: false,
+  burnInputLayout: "fixed",
+};
+
 function useAppData() {
   const [records, setRecords] = useLocalStorage("weiding:records", []);
-  const [settings, setSettings] = useLocalStorage("weiding:settings", {
-    theme: "dark",
-    recordsEnabled: false,
-    breathing: true,
-    haptics: true,
-    interfaceSounds: true,
-    reducedEffects: false,
-    voiceVolume: 0.72,
-    ambienceVolume: 0.42,
-    fullscreen: false,
-    burnInputLayout: "fixed",
-  });
+  const [storedSettings, setSettings] = useLocalStorage("weiding:settings", defaultSettings);
+  const settings = { ...defaultSettings, ...storedSettings };
   return { records, setRecords, settings, setSettings };
 }
 
@@ -479,9 +483,21 @@ function MeditationPage() {
         ? "正在准备声音"
         : `轻触${audio.playing ? "暂停" : "继续"}`;
 
+  const goToCompletion = useCallback((finished = false) => {
+    const listenedDuration = finished
+      ? audio.duration
+      : audio.duration * Math.min(1, Math.max(0, audio.progress / 100));
+    navigate(`/completion/${state.id}`, {
+      state: {
+        sceneIndex: Number(sceneIndex) || 0,
+        duration: Math.max(1, Math.round(listenedDuration || 1)),
+      },
+    });
+  }, [audio.duration, audio.progress, navigate, sceneIndex, state.id]);
+
   useEffect(() => {
-    if (audio.progress >= 99.8) navigate(`/completion/${state.id}`);
-  }, [audio.progress, navigate, state.id]);
+    if (audio.progress >= 99.8) goToCompletion(true);
+  }, [audio.progress, goToCompletion]);
 
   useEffect(() => {
     window.clearTimeout(hideControlsRef.current);
@@ -495,8 +511,17 @@ function MeditationPage() {
     setControlActivity((value) => value + 1);
   };
 
+  const closeControlsBeforePageAction = (event) => {
+    if (!controlsOpen) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target?.closest(".immersive-controls,.control-reveal")) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setControlsOpen(false);
+  };
+
   return (
-    <main className="screen meditation-screen">
+    <main className="screen meditation-screen" onClickCapture={closeControlsBeforePageAction}>
       <AppHeader title="闭眼冥想室" back />
       <div className="meditation-meta">
         <span>{state.title}</span>
@@ -535,7 +560,7 @@ function MeditationPage() {
                 </button>
                 <button onClick={() => keepControlsOpen(() => audio.seekBy(15))} aria-label="前进15秒"><ArrowClockwise size={23} /><span>15</span></button>
               </div>
-              <button className="end-session-action" data-feedback="confirm" onClick={() => navigate(`/completion/${state.id}`)}>提前结束本次体验</button>
+              <button className="end-session-action" data-feedback="confirm" onClick={() => goToCompletion(false)}>提前结束本次体验</button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -551,6 +576,7 @@ function MeditationPage() {
 function CompletionPage() {
   const { stateId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { settings, setRecords } = useData();
   const [feedback, setFeedback] = useState(null);
   const recordedRef = useRef(false);
@@ -570,12 +596,18 @@ function CompletionPage() {
     try { localStorage.setItem("weiding:install-eligible", "1"); } catch {}
     if (settings.recordsEnabled && !recordedRef.current) {
       recordedRef.current = true;
-      setRecords((items) => [{ id: createId(), type: "meditation", stateId, feedback: value, at: new Date().toISOString(), duration: 180 }, ...items]);
+      setRecords((items) => [createMeditationRecord({
+        id: createId(),
+        stateId,
+        sceneIndex: location.state?.sceneIndex ?? 0,
+        feedback: value,
+        duration: location.state?.duration ?? 0,
+      }), ...items]);
     }
   };
   useEffect(() => {
     if (!feedback) return undefined;
-    const timer = window.setTimeout(() => navigate("/"), 1500);
+    const timer = window.setTimeout(() => navigate("/records"), 1500);
     return () => window.clearTimeout(timer);
   }, [feedback, navigate]);
   return (
@@ -595,7 +627,7 @@ function CompletionPage() {
           <motion.div key="suggestion" className="gentle-suggestion" role="status" aria-live="polite" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .24, ease: [0.22, 1, 0.36, 1] }}>
             <Check size={20} />
             <p>{suggestions[feedback]}</p>
-            <span>正在回到状态调整</span>
+            <span>正在前往时间流转</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1088,18 +1120,108 @@ function PsychologyArticlePage() {
   );
 }
 
+function formatRecordTime(at, includeYear = false) {
+  const date = new Date(at);
+  if (Number.isNaN(date.getTime())) return "时间未知";
+  return date.toLocaleString("zh-CN", {
+    ...(includeYear ? { year: "numeric" } : {}),
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatRecordDuration(duration) {
+  const seconds = Math.max(0, Math.round(Number(duration) || 0));
+  if (!seconds) return "未记录";
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes ? `${minutes} 分 ${remainder.toString().padStart(2, "0")} 秒` : `${remainder} 秒`;
+}
+
 function RecordsPage() {
   const { records, setRecords, settings } = useData();
+  const removeRecord = (record) => {
+    if (!window.confirm(`删除“${getRecordTitle(record)}”？这个操作不能撤销。`)) return;
+    setRecords((items) => items.filter((item) => item.id !== record.id));
+  };
   return (
     <main className="screen library-screen records-screen">
-      <TopLevelIntro title={["时间会经过，", "不必留下痕迹。"]} subtitle="记录默认关闭，只有你主动开启后才会留下片刻。" section="时间流转" />
+      <TopLevelIntro title={["时间会经过，", "不必留下痕迹。"]} subtitle="完成后的片刻，只保存在当前设备。" section="时间流转" />
       {!settings.recordsEnabled ? (
-        <div className="records-privacy-note"><ClockCounterClockwise size={25} /><p>微定会守护你的隐私。<br />需要时，可以在设置中主动开启记录。</p></div>
+        <div className="records-privacy-note"><ClockCounterClockwise size={25} /><p>记录已关闭。<br />你可以随时在设置中重新开启。</p></div>
       ) : records.length === 0 ? (
-        <div className="empty-state"><ClockCounterClockwise size={28} /><h1>还没有记录</h1><p>等你完成一次状态调整，这里才会留下时间与反馈。你在阅后即焚里写下的内容，始终不会被保存。</p></div>
+        <div className="empty-state"><ClockCounterClockwise size={28} /><h1>还没有记录</h1><p>完成一次状态调整后，这里会留下时间与反馈。阅后即焚中的内容始终不会进入记录。</p></div>
       ) : (
-        <div className="record-list">{records.map((record) => <article key={record.id}><div><strong>{record.type === "encounter" ? "声音盲盒" : getState(record.stateId).title}</strong><span>{new Date(record.at).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div><button onClick={() => setRecords((items) => items.filter((item) => item.id !== record.id))} aria-label="删除记录"><Trash size={18} /></button></article>)}</div>
+        <div className="record-list">{records.map((record) => (
+          <article key={record.id}>
+            <Link className="record-list-content" to={`/records/${record.id}`}>
+              <strong>{getRecordTitle(record)}</strong>
+              <p>{getRecordSummary(record)}</p>
+              <span>{formatRecordTime(record.at)}</span>
+            </Link>
+            <div className="record-row-actions">
+              <Link to={`/records/${record.id}`} state={{ editing: true }} aria-label={`编辑${getRecordTitle(record)}`}><PencilSimple size={18} /></Link>
+              <button onClick={() => removeRecord(record)} aria-label={`删除${getRecordTitle(record)}`}><Trash size={18} /></button>
+            </div>
+          </article>
+        ))}</div>
       )}
+    </main>
+  );
+}
+
+function RecordDetailPage() {
+  const { recordId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { records, setRecords } = useData();
+  const record = records.find((item) => item.id === recordId);
+  const [editing, setEditing] = useState(Boolean(location.state?.editing));
+  const [draft, setDraft] = useState(record?.note ?? "");
+
+  useEffect(() => {
+    setDraft(record?.note ?? "");
+  }, [record?.id, record?.note]);
+
+  if (!record) return <Navigate to="/records" replace />;
+  const state = record.type === "meditation" ? getRecordState(record) : null;
+  const saveNote = () => {
+    setRecords((items) => items.map((item) => item.id === record.id ? { ...item, note: draft.trim() } : item));
+    setEditing(false);
+  };
+  const removeRecord = () => {
+    if (!window.confirm("删除这次记录？这个操作不能撤销。")) return;
+    setRecords((items) => items.filter((item) => item.id !== record.id));
+    navigate("/records", { replace: true });
+  };
+
+  return (
+    <main className="screen record-detail-screen">
+      <AppHeader title="一次记录" back />
+      <article className="record-detail">
+        <header>
+          <span>{formatRecordTime(record.at, true)}</span>
+          <h1>{getRecordTitle(record)}</h1>
+          <p>{state ? `${state.title} · ${getFeedbackLabel(record.feedback)}` : "声音盲盒"}</p>
+        </header>
+        <section className="record-note-section">
+          <div><h2>写给这一次</h2>{!editing && <button onClick={() => setEditing(true)}><PencilSimple size={16} />编辑</button>}</div>
+          {editing ? (
+            <>
+              <textarea autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="写下你想为这次体验留下的话……" aria-label="记录文字" />
+              <div className="record-edit-actions"><button onClick={() => { setDraft(record.note ?? ""); setEditing(false); }}>取消</button><button className="is-primary" onClick={saveNote}><Check size={16} />保存</button></div>
+            </>
+          ) : <p className={!record.note?.trim() ? "is-default" : ""}>{getRecordSummary(record)}</p>}
+        </section>
+        <dl className="record-facts">
+          {state && <><div><dt>状态</dt><dd>{state.title}<small>{state.term}</small></dd></div><div><dt>当时的处境</dt><dd>{getRecordScene(record)}</dd></div></>}
+          <div><dt>完成反馈</dt><dd>{getFeedbackLabel(record.feedback)}</dd></div>
+          <div><dt>体验时长</dt><dd>{formatRecordDuration(record.duration)}</dd></div>
+        </dl>
+        <button className="record-delete-action" onClick={removeRecord}><Trash size={17} />删除这次记录</button>
+      </article>
     </main>
   );
 }
@@ -1182,7 +1304,7 @@ function SettingsPage() {
       </section>
       <section className="settings-group privacy-block">
         <h2>记录与隐私</h2>
-        <div className="setting-row"><div><strong>保存体验记录</strong><span>默认关闭，只记录完成信息</span></div><Toggle checked={settings.recordsEnabled} onChange={(value) => update("recordsEnabled", value)} label="保存体验记录" /></div>
+        <div className="setting-row"><div><strong>保存体验记录</strong><span>新用户默认开启，可随时关闭</span></div><Toggle checked={settings.recordsEnabled} onChange={(value) => update("recordsEnabled", value)} label="保存体验记录" /></div>
         <p>数据只保存在当前浏览器。清除浏览器数据、卸载 PWA 或更换设备后无法恢复。</p>
         <button className="danger-action" onClick={clearData}><Trash size={18} />清除所有本地数据</button>
       </section>
@@ -1457,6 +1579,7 @@ function AppRoutes() {
         <Route path="/psychology-library/:articleId" element={<PsychologyArticlePage />} />
         <Route path="/emotion-index" element={<Navigate to="/psychology-library" replace />} />
         <Route path="/records" element={<RecordsPage />} />
+        <Route path="/records/:recordId" element={<RecordDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes></motion.div></AnimatePresence>
       <IOSInstallCoachmark />
