@@ -34,6 +34,7 @@ import {
   useParams,
 } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { getFeedbackAudioState, playInteractionFeedback, playRailFeedback, unlockFeedbackAudio } from "./audioFeedback.js";
 import { encounterTracks, knowledgeTopics, states } from "./data.js";
 import { guidedAudioPool } from "./guidedAudio.js";
 import { isIOSSafari, lockPortraitOrientation, shouldOfferIOSInstall, splashDuration } from "./pwa.js";
@@ -48,6 +49,9 @@ const defaultSettings = {
   breathing: true,
   haptics: true,
   interfaceSounds: true,
+  interfaceVolume: 0.95,
+  playbackVolume: 1,
+  audioProfileVersion: 3,
   reducedEffects: false,
   voiceVolume: 0.72,
   ambienceVolume: 0.42,
@@ -58,7 +62,17 @@ const defaultSettings = {
 function useAppData() {
   const [records, setRecords] = useLocalStorage("weiding:records", []);
   const [storedSettings, setSettings] = useLocalStorage("weiding:settings", defaultSettings);
-  const settings = { ...defaultSettings, ...storedSettings };
+  const needsAudioMigration = storedSettings.audioProfileVersion !== 3;
+  const audioMigration = needsAudioMigration ? {
+    interfaceVolume: defaultSettings.interfaceVolume,
+    playbackVolume: defaultSettings.playbackVolume,
+    audioProfileVersion: 3,
+  } : null;
+  const settings = { ...defaultSettings, ...storedSettings, ...audioMigration };
+  useEffect(() => {
+    if (!needsAudioMigration) return;
+    setSettings((current) => ({ ...current, ...audioMigration }));
+  }, [audioMigration, needsAudioMigration, setSettings]);
   return { records, setRecords, settings, setSettings };
 }
 
@@ -172,21 +186,11 @@ function CanvasPage() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [dragging, setDragging] = useState(false);
   const railRef = useRef(null);
-  const audioContextRef = useRef(null);
   const lastTickRef = useRef(0);
   const navigate = useNavigate();
   const { settings } = useData();
   const reduceMotion = useReducedMotion();
   const selected = states[selectedIndex];
-
-  const railSonicProfiles = [
-    { frequency: 392, overtone: 1.5, type: "sine", duration: .07 },
-    { frequency: 440, overtone: 1.25, type: "triangle", duration: .065 },
-    { frequency: 523.25, overtone: 1.125, type: "triangle", duration: .045 },
-    { frequency: 293.66, overtone: 1.5, type: "sine", duration: .085 },
-    { frequency: 349.23, overtone: 1.25, type: "sine", duration: .095 },
-    { frequency: 261.63, overtone: 2, type: "sine", duration: .11 },
-  ];
 
   const playRailTick = (index) => {
     if (lastTickRef.current === index) return;
@@ -195,28 +199,7 @@ function CanvasPage() {
       navigator.vibrate(index === 2 ? 14 : index === 5 ? 18 : 11);
     }
     if (settings.interfaceSounds === false) return;
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContext) return;
-    const context = audioContextRef.current || new AudioContext({ latencyHint: "interactive" });
-    audioContextRef.current = context;
-    const sound = () => {
-      const profile = railSonicProfiles[index];
-      const now = context.currentTime;
-      const gain = context.createGain();
-      const primary = context.createOscillator();
-      const overtone = context.createOscillator();
-      primary.type = profile.type;
-      overtone.type = "sine";
-      primary.frequency.setValueAtTime(profile.frequency, now);
-      overtone.frequency.setValueAtTime(profile.frequency * profile.overtone, now);
-      gain.gain.setValueAtTime(.0001, now);
-      gain.gain.exponentialRampToValueAtTime(index === 2 ? .042 : .055, now + .008);
-      gain.gain.exponentialRampToValueAtTime(.0001, now + profile.duration);
-      primary.connect(gain); overtone.connect(gain); gain.connect(context.destination);
-      primary.start(now); overtone.start(now);
-      primary.stop(now + profile.duration + .01); overtone.stop(now + profile.duration + .01);
-    };
-    if (context.state === "suspended") context.resume().then(sound).catch(() => {}); else sound();
+    playRailFeedback(index, settings.interfaceVolume);
   };
 
   const updateFromPointer = (clientY) => {
@@ -320,8 +303,8 @@ function StateScenesPage() {
   const navigate = useNavigate();
   const { settings } = useData();
   useEffect(() => {
-    guidedAudioPool.reset(state.audio, settings.voiceVolume);
-  }, [settings.voiceVolume, state.audio]);
+    guidedAudioPool.reset(state.audio, settings.playbackVolume);
+  }, [settings.playbackVolume, state.audio]);
   return (
     <main className="screen detail-screen">
       <AppHeader title={state.title} back />
@@ -333,7 +316,7 @@ function StateScenesPage() {
       <div className="scene-list">
         {state.scenes.map((scene, index) => (
           <button key={scene} disabled={index > 0} className={index > 0 ? "is-unavailable" : ""} onClick={() => {
-            guidedAudioPool.prime(state.audio, settings.voiceVolume);
+            guidedAudioPool.prime(state.audio, settings.playbackVolume);
             navigate(`/meditation/${state.id}/${index}`);
           }}>
             <span>{scene}</span>
@@ -467,7 +450,7 @@ function MeditationPage() {
   const state = getState(stateId);
   const navigate = useNavigate();
   const { settings } = useData();
-  const audio = useGuidedAudio(state.audio, settings.voiceVolume, true);
+  const audio = useGuidedAudio(state.audio, settings.playbackVolume, true);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [controlActivity, setControlActivity] = useState(0);
   const hideControlsRef = useRef(null);
@@ -849,28 +832,28 @@ function useAmbientDetails(track, playing, reducedEffects) {
 
 let primedEncounterAudio = null;
 
-function createEncounterAudio(track) {
+function createEncounterAudio(track, playbackVolume = 1) {
   const audio = new Audio(track.src);
   audio.preload = "metadata";
   audio.loop = Boolean(track.loop);
-  audio.volume = track.category === "nature" ? .48 : .56;
+  audio.volume = Math.min(1, Math.max(0, playbackVolume * (track.category === "nature" ? .96 : 1)));
   return audio;
 }
 
-function primeEncounterAudio(track) {
+function primeEncounterAudio(track, playbackVolume) {
   if (primedEncounterAudio?.audio) {
     if (primedEncounterAudio.cleanupTimer) window.clearTimeout(primedEncounterAudio.cleanupTimer);
     primedEncounterAudio.audio.pause();
     primedEncounterAudio.audio.removeAttribute("src");
     primedEncounterAudio.audio.load();
   }
-  const audio = createEncounterAudio(track);
+  const audio = createEncounterAudio(track, playbackVolume);
   const playPromise = audio.play();
   primedEncounterAudio = { trackId: track.id, audio, playPromise, cleanupTimer: null };
   playPromise.catch(() => {});
 }
 
-function useEncounterAudio(track) {
+function useEncounterAudio(track, playbackVolume) {
   const audioRef = useRef(null);
   const loadTimeoutRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -880,7 +863,8 @@ function useEncounterAudio(track) {
   useEffect(() => {
     if (!track) return undefined;
     const primed = primedEncounterAudio?.trackId === track.id ? primedEncounterAudio : null;
-    const audio = primed?.audio ?? createEncounterAudio(track);
+    const audio = primed?.audio ?? createEncounterAudio(track, playbackVolume);
+    audio.volume = Math.min(1, Math.max(0, playbackVolume * (track.category === "nature" ? .96 : 1)));
     if (primed?.cleanupTimer) {
       window.clearTimeout(primed.cleanupTimer);
       primed.cleanupTimer = null;
@@ -936,7 +920,7 @@ function useEncounterAudio(track) {
         releaseAudio();
       }
     };
-  }, [track]);
+  }, [playbackVolume, track]);
   const toggle = () => {
     const audio = audioRef.current;
     if (!audio || loading) return;
@@ -966,12 +950,12 @@ function EncounterPage() {
   const navigate = useNavigate();
   const { settings, setRecords } = useData();
   const [track, setTrack] = useState(null);
-  const audio = useEncounterAudio(track);
+  const audio = useEncounterAudio(track, settings.playbackVolume);
   useAmbientDetails(track, audio.playing, settings.reducedEffects);
   const choose = (category, excludeId) => {
     const pool = encounterTracks.filter((item) => item.category === category && item.id !== excludeId);
     const next = pool[Math.floor(Math.random() * pool.length)] ?? encounterTracks.find((item) => item.category === category);
-    primeEncounterAudio(next);
+    primeEncounterAudio(next, settings.playbackVolume);
     setTrack(next);
   };
   const leave = () => {
@@ -1234,7 +1218,19 @@ function SettingsPage() {
   const { settings, setSettings, setRecords } = useData();
   const getFullscreenElement = () => document.fullscreenElement || document.webkitFullscreenElement;
   const [fullscreenActive, setFullscreenActive] = useState(Boolean(getFullscreenElement()));
+  const [soundTestStatus, setSoundTestStatus] = useState("");
   const update = (key, value) => setSettings({ ...settings, [key]: value });
+  const testInterfaceSound = async () => {
+    setSoundTestStatus("正在检查声音……");
+    try {
+      const unlocked = await unlockFeedbackAudio();
+      const played = unlocked && await playInteractionFeedback("confirm", settings.interfaceVolume);
+      setSoundTestStatus(played ? "试听音已播放" : `声音尚未解锁（${getFeedbackAudioState()}）`);
+    } catch {
+      setSoundTestStatus("当前浏览器暂未提供提示音");
+    }
+    window.setTimeout(() => setSoundTestStatus(""), 2600);
+  };
   useEffect(() => {
     const syncFullscreen = () => setFullscreenActive(Boolean(getFullscreenElement()));
     document.addEventListener("fullscreenchange", syncFullscreen);
@@ -1284,6 +1280,15 @@ function SettingsPage() {
       </section>
       <section className="settings-group">
         <h2>声音与反馈</h2>
+        <div className="volume-setting">
+          <div><strong>播放音量</strong><span>冥想人声、自然声与纯音乐</span></div>
+          <div className="volume-control"><input type="range" min="0.45" max="1" step="0.05" value={settings.playbackVolume} onChange={(event) => update("playbackVolume", Number(event.target.value))} aria-label="播放音量" /><output>{Math.round(settings.playbackVolume * 100)}%</output></div>
+        </div>
+        <div className="volume-setting">
+          <div><strong>提示音量</strong><span>按钮与状态滑杆的轻触声音</span></div>
+          <div className="volume-control"><input type="range" min="0.35" max="1" step="0.05" value={settings.interfaceVolume} onChange={(event) => update("interfaceVolume", Number(event.target.value))} aria-label="提示音量" /><output>{Math.round(settings.interfaceVolume * 100)}%</output></div>
+        </div>
+        <div className="sound-test-row"><button type="button" data-feedback="none" onClick={testInterfaceSound}>试听提示音</button><span role="status" aria-live="polite">{soundTestStatus}</span></div>
         {[
           ["interfaceSounds", "界面音效", "状态滑杆与必要的操作提示音"],
           ["haptics", "触感反馈", typeof navigator.vibrate === "function" ? "滑动与点击时使用手机振动" : "当前设备使用声音与视觉反馈"],
@@ -1434,7 +1439,6 @@ function MobileEnvironmentEffect() {
 
 function ThemeEffect() {
   const { settings } = useData();
-  const feedbackContextRef = useRef(null);
   const lastFeedbackRef = useRef(0);
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
@@ -1450,6 +1454,21 @@ function ThemeEffect() {
   }, [settings.theme, settings.reducedEffects]);
 
   useEffect(() => {
+    if (settings.interfaceSounds === false) return undefined;
+    const unlock = () => { unlockFeedbackAudio(); };
+    document.addEventListener("pointerdown", unlock, true);
+    document.addEventListener("touchend", unlock, true);
+    document.addEventListener("keydown", unlock, true);
+    window.addEventListener("pageshow", unlock);
+    return () => {
+      document.removeEventListener("pointerdown", unlock, true);
+      document.removeEventListener("touchend", unlock, true);
+      document.removeEventListener("keydown", unlock, true);
+      window.removeEventListener("pageshow", unlock);
+    };
+  }, [settings.interfaceSounds]);
+
+  useEffect(() => {
     const feedback = (event) => {
       if (!settings.haptics && settings.interfaceSounds === false) return;
       const target = event.target instanceof Element ? event.target.closest("button, a, [role='option'], [role='tab'], [role='switch']") : null;
@@ -1461,28 +1480,11 @@ function ThemeEffect() {
       const duration = kind === "confirm" ? 16 : kind === "selection" ? 11 : 8;
       if (settings.haptics) navigator.vibrate?.(duration);
       if (settings.interfaceSounds === false) return;
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      const context = feedbackContextRef.current || new AudioContext({ latencyHint: "interactive" });
-      feedbackContextRef.current = context;
-      const sound = () => {
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-        const now = context.currentTime;
-        oscillator.type = kind === "confirm" ? "triangle" : "sine";
-        oscillator.frequency.setValueAtTime(kind === "confirm" ? 720 : 620, now);
-        gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(kind === "confirm" ? 0.028 : 0.018, now + 0.004);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.034);
-        oscillator.connect(gain).connect(context.destination);
-        oscillator.start(now);
-        oscillator.stop(now + 0.04);
-      };
-      if (context.state === "suspended") context.resume().then(sound).catch(() => {}); else sound();
+      playInteractionFeedback(kind, settings.interfaceVolume);
     };
     document.addEventListener("click", feedback, true);
     return () => document.removeEventListener("click", feedback, true);
-  }, [settings.haptics, settings.interfaceSounds]);
+  }, [settings.haptics, settings.interfaceSounds, settings.interfaceVolume]);
   return null;
 }
 

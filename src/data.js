@@ -12,7 +12,7 @@ export const states = [
       "让这一段反复，慢慢离我远一点。",
       "此刻，只把注意力留给一次呼吸。",
     ],
-    audio: "/audio/rumination.mp3",
+    audio: "/audio/rumination.mp3?v=3",
     scenes: [
       "一段对话总在脑中重播。",
       "我反复猜测别人当时真正的意思。",
@@ -35,7 +35,7 @@ export const states = [
       "把注意力带回身体正在接触的地方。",
       "下一步很小，也已经足够。",
     ],
-    audio: "/audio/anticipation.mp3",
+    audio: "/audio/anticipation.mp3?v=3",
     scenes: [
       "考试、面试或汇报前没底。",
       "我担心明天会发生不好的事情。",
@@ -58,7 +58,7 @@ export const states = [
       "先让脑海里的声音，彼此离远一点。",
       "现在，只需要辨认最小的一步。",
     ],
-    audio: "/audio/overload.mp3",
+    audio: "/audio/overload.mp3?v=3",
     scenes: [
       "事情堆在一起，不知道先做什么。",
       "消息和要求不断进来，我无法集中。",
@@ -81,7 +81,7 @@ export const states = [
       "允许身体用自己的速度，从停住走向开始。",
       "做一点点，也是在改变此刻的位置。",
     ],
-    audio: "/audio/blocked.mp3",
+    audio: "/audio/blocked.mp3?v=3",
     scenes: [
       "一直在准备，却没有进入执行。",
       "任务并不难，但我一直在回避它。",
@@ -104,7 +104,7 @@ export const states = [
       "每一次呼气，都给身体多一点空间。",
       "我可以等这一阵余波，慢慢经过。",
     ],
-    audio: "/audio/aftershock.mp3",
+    audio: "/audio/aftershock.mp3?v=3",
     scenes: [
       "没得到期待的回应，很失落。",
       "刚才的事情让我身体一直发紧。",
@@ -127,7 +127,7 @@ export const states = [
       "恢复与前进，都可以从很小的动作开始。",
       "此刻能做到多少，就先允许多少。",
     ],
-    audio: "/audio/low-energy.mp3",
+    audio: "/audio/low-energy.mp3?v=3",
     scenes: [
       "刚醒来，状态还没有启动。",
       "我想休息，却又为休息感到内疚。",
