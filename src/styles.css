@@ -165,6 +165,7 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 .low-power .ambient-texture{opacity:.34}
 .low-power .persistent-tabs{backdrop-filter:none;-webkit-backdrop-filter:none}
 .low-power .breath-orb.is-breathing{animation-duration:8s}
+.low-power .breath-orb.is-breathing::before,.low-power .breath-orb.is-breathing::after{animation:none}
 @media(prefers-reduced-transparency:reduce){.persistent-tabs{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}}
 @media(prefers-reduced-motion:reduce){.burn-placeholder{animation:none}}
 @media(max-width:359px){:root{--gutter:20px}.top-level-intro h1{font-size:28px}.top-level-intro p{font-size:12px}.state-selector.vertical{grid-template-columns:minmax(0,1fr) 36px;gap:8px}.state-title-row{padding-left:6px;font-size:18px}.state-title-row.is-selected{font-size:21px}.state-title-row small{font-size:12px}.persistent-tabs{left:8px;right:8px;padding-inline:4px}.persistent-tabs a{font-size:12px}.transport-controls{gap:22px}}
@@ -398,15 +399,50 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   inset:0;
   width:100%;
   height:100%;
+  isolation:isolate;
   background:color-mix(in srgb,var(--surface) 86%,var(--line));
   border-color:color-mix(in srgb,var(--line-strong) 72%,transparent);
-  box-shadow:0 0 0 32px color-mix(in srgb,var(--line) 14%,transparent),0 0 0 64px color-mix(in srgb,var(--line) 6%,transparent);
-  will-change:transform,opacity,background-color,border-color,box-shadow;
+  box-shadow:none;
+  will-change:transform,opacity,background-color,border-color;
 }
-.breath-orb.is-breathing{animation:weiding-breathe 8s cubic-bezier(.45,0,.55,1) infinite}
-@keyframes weiding-breathe{
-  0%,100%{transform:scale(.94);opacity:.72;background-color:color-mix(in srgb,var(--surface) 88%,var(--line));border-color:var(--line-strong);box-shadow:0 0 0 28px color-mix(in srgb,var(--line) 13%,transparent),0 0 0 56px color-mix(in srgb,var(--line) 5%,transparent)}
-  50%{transform:scale(1.04);opacity:1;background-color:color-mix(in srgb,var(--accent) 7%,var(--surface));border-color:color-mix(in srgb,var(--accent) 58%,var(--line));box-shadow:0 0 0 34px color-mix(in srgb,var(--accent) 7%,transparent),0 0 0 68px color-mix(in srgb,var(--accent) 3%,transparent)}
+.breath-orb::before,.breath-orb::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  border-radius:50%;
+  pointer-events:none;
+  will-change:transform,opacity,background-color;
+}
+.breath-orb::before{
+  inset:-32px;
+  background:color-mix(in srgb,var(--line) 13%,transparent);
+  opacity:.72;
+}
+.breath-orb::after{
+  inset:-64px;
+  background:color-mix(in srgb,var(--line) 5%,transparent);
+  opacity:.58;
+}
+.breath-orb.is-breathing{animation:weiding-breathe-core 8.8s linear infinite}
+.breath-orb.is-breathing::before{animation:weiding-breathe-middle 9.08s linear infinite -.12s}
+.breath-orb.is-breathing::after{animation:weiding-breathe-outer 9.42s linear infinite -.24s}
+@keyframes weiding-breathe-core{
+  0%,7%{transform:scale(.95);opacity:.74;background-color:color-mix(in srgb,var(--surface) 88%,var(--line));border-color:var(--line-strong);animation-timing-function:cubic-bezier(.37,0,.22,1)}
+  38%{transform:scale(1.035);opacity:.96;background-color:color-mix(in srgb,var(--accent) 5%,var(--surface));border-color:color-mix(in srgb,var(--accent) 48%,var(--line));animation-timing-function:cubic-bezier(.22,.65,.36,1)}
+  45%{transform:scale(1.04);opacity:1;background-color:color-mix(in srgb,var(--accent) 7%,var(--surface));border-color:color-mix(in srgb,var(--accent) 58%,var(--line));animation-timing-function:cubic-bezier(.42,0,.58,1)}
+  91%,100%{transform:scale(.95);opacity:.74;background-color:color-mix(in srgb,var(--surface) 88%,var(--line));border-color:var(--line-strong)}
+}
+@keyframes weiding-breathe-middle{
+  0%,8%{transform:scale(.96);opacity:.58;background-color:color-mix(in srgb,var(--line) 12%,transparent);animation-timing-function:cubic-bezier(.37,0,.22,1)}
+  40%{transform:scale(1.035);opacity:.78;background-color:color-mix(in srgb,var(--accent) 6%,transparent);animation-timing-function:cubic-bezier(.22,.65,.36,1)}
+  47%{transform:scale(1.045);opacity:.82;background-color:color-mix(in srgb,var(--accent) 8%,transparent);animation-timing-function:cubic-bezier(.42,0,.58,1)}
+  92%,100%{transform:scale(.96);opacity:.58;background-color:color-mix(in srgb,var(--line) 12%,transparent)}
+}
+@keyframes weiding-breathe-outer{
+  0%,9%{transform:scale(.97);opacity:.42;background-color:color-mix(in srgb,var(--line) 5%,transparent);animation-timing-function:cubic-bezier(.37,0,.22,1)}
+  42%{transform:scale(1.025);opacity:.62;background-color:color-mix(in srgb,var(--accent) 3%,transparent);animation-timing-function:cubic-bezier(.22,.65,.36,1)}
+  49%{transform:scale(1.04);opacity:.66;background-color:color-mix(in srgb,var(--accent) 4%,transparent);animation-timing-function:cubic-bezier(.42,0,.58,1)}
+  93%,100%{transform:scale(.97);opacity:.42;background-color:color-mix(in srgb,var(--line) 5%,transparent)}
 }
 .tap-hint{bottom:9px}
 .immersive-control-area{
@@ -488,7 +524,8 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   .affirmation-stage p{width:min(38vw,250px);font-size:15px;line-height:1.6}
 }
 @media(prefers-reduced-motion:reduce){
-  .breath-orb.is-breathing{animation:none;background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
+  .breath-orb.is-breathing,.breath-orb.is-breathing::before,.breath-orb.is-breathing::after{animation:none}
+  .breath-orb.is-breathing{background:color-mix(in srgb,var(--accent) 5%,var(--surface));border-color:color-mix(in srgb,var(--accent) 48%,var(--line))}
 }
 
 /* v6 — quiet navigation, anchored player controls and settings hierarchy */
@@ -570,6 +607,23 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
 }
 .playback-status .progress-track{width:100%}
 .immersive-controls,.control-reveal{flex:0 0 auto}
+.audio-recovery{
+  flex:0 0 auto;
+  width:min(100%,350px);
+  min-height:48px;
+  padding:7px 10px 7px 14px;
+  border-radius:10px;
+  background:color-mix(in srgb,var(--surface) 72%,var(--bg));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:var(--muted);
+  font-family:var(--font-ui);
+  font-size:10px;
+}
+.audio-recovery-actions{display:flex;align-items:center;gap:2px}
+.audio-recovery button{min-width:48px;min-height:44px;padding:0 8px;border:0;background:transparent;color:var(--accent);font-family:var(--font-ui);font-size:10px;cursor:pointer}
 .privacy-block .setting-row{margin-bottom:16px}
 .privacy-block p{margin-top:0}
 

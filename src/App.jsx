@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -35,6 +35,7 @@ import {
 } from "react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { encounterTracks, knowledgeTopics, states } from "./data.js";
+import { guidedAudioPool } from "./guidedAudio.js";
 import { isIOSSafari, lockPortraitOrientation, shouldOfferIOSInstall, splashDuration } from "./pwa.js";
 import { useLocalStorage } from "./useLocalStorage.js";
 
@@ -314,6 +315,9 @@ function StateScenesPage() {
   const state = getState(stateId);
   const navigate = useNavigate();
   const { settings } = useData();
+  useEffect(() => {
+    guidedAudioPool.reset(state.audio, settings.voiceVolume);
+  }, [settings.voiceVolume, state.audio]);
   return (
     <main className="screen detail-screen">
       <AppHeader title={state.title} back />
@@ -325,7 +329,7 @@ function StateScenesPage() {
       <div className="scene-list">
         {state.scenes.map((scene, index) => (
           <button key={scene} disabled={index > 0} className={index > 0 ? "is-unavailable" : ""} onClick={() => {
-            primeGuidedAudio(state.audio, settings.voiceVolume);
+            guidedAudioPool.prime(state.audio, settings.voiceVolume);
             navigate(`/meditation/${state.id}/${index}`);
           }}>
             <span>{scene}</span>
@@ -337,34 +341,6 @@ function StateScenesPage() {
   );
 }
 
-let primedGuidedAudio = null;
-
-function createGuidedAudio(src, volume) {
-  const element = new Audio(`${import.meta.env.BASE_URL}${src.replace(/^\//, "")}`);
-  element.preload = "metadata";
-  element.volume = volume;
-  return element;
-}
-
-function primeGuidedAudio(src, volume) {
-  if (primedGuidedAudio?.element) primedGuidedAudio.element.pause();
-  const element = createGuidedAudio(src, volume);
-  const playPromise = element.play();
-  primedGuidedAudio = { src, element, playPromise };
-  playPromise.catch(() => {});
-}
-
-function takePrimedGuidedAudio(src) {
-  if (primedGuidedAudio?.src !== src) {
-    primedGuidedAudio?.element?.pause();
-    primedGuidedAudio = null;
-    return null;
-  }
-  const pending = primedGuidedAudio;
-  primedGuidedAudio = null;
-  return pending;
-}
-
 function useGuidedAudio(src, volume, autoStart = false) {
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -372,30 +348,69 @@ function useGuidedAudio(src, volume, autoStart = false) {
   const [audioError, setAudioError] = useState(false);
   const [autoplayBlocked, setAutoplayBlocked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [slowLoading, setSlowLoading] = useState(false);
   const audioRef = useRef(null);
+  const preparingTimerRef = useRef(null);
+  const slowTimerRef = useRef(null);
+
+  const clearLoadingTimers = useCallback(() => {
+    window.clearTimeout(preparingTimerRef.current);
+    window.clearTimeout(slowTimerRef.current);
+  }, []);
+
+  const finishLoading = useCallback(() => {
+    clearLoadingTimers();
+    setLoading(false);
+    setPreparing(false);
+    setSlowLoading(false);
+  }, [clearLoadingTimers]);
+
+  const beginLoading = useCallback(() => {
+    clearLoadingTimers();
+    setLoading(true);
+    setPreparing(false);
+    setSlowLoading(false);
+    preparingTimerRef.current = window.setTimeout(() => setPreparing(true), 300);
+    slowTimerRef.current = window.setTimeout(() => setSlowLoading(true), 5000);
+  }, [clearLoadingTimers]);
 
   useEffect(() => {
-    const primed = takePrimedGuidedAudio(src);
-    const element = primed?.element ?? createGuidedAudio(src, volume);
+    const entry = guidedAudioPool.attach(src, volume);
+    const element = entry.element;
     element.volume = volume;
     const onMetadata = () => setDuration(element.duration || 0);
     const onTime = () => setProgress(element.duration ? element.currentTime / element.duration * 100 : 0);
-    const onEnded = () => setPlaying(false);
-    const onError = () => { setAudioError(true); setLoading(false); setPlaying(false); };
+    const onPlaying = () => {
+      setPlaying(true);
+      setAutoplayBlocked(false);
+      finishLoading();
+    };
+    const onWaiting = () => {
+      setPlaying(false);
+      beginLoading();
+    };
+    const onPause = () => setPlaying(false);
+    const onEnded = () => { setPlaying(false); finishLoading(); };
+    const onError = () => { setAudioError(true); finishLoading(); setPlaying(false); };
     element.addEventListener("loadedmetadata", onMetadata);
     element.addEventListener("timeupdate", onTime);
+    element.addEventListener("playing", onPlaying);
+    element.addEventListener("waiting", onWaiting);
+    element.addEventListener("stalled", onWaiting);
+    element.addEventListener("pause", onPause);
     element.addEventListener("ended", onEnded);
     element.addEventListener("error", onError);
     audioRef.current = element;
+    if (Number.isFinite(element.duration) && element.duration > 0) setDuration(element.duration);
+    if (element.duration > 0 && element.currentTime > 0) setProgress(element.currentTime / element.duration * 100);
     if (autoStart) {
-      setLoading(true);
-      (primed?.playPromise ?? element.play()).then(() => {
-        setPlaying(true);
-        setAutoplayBlocked(false);
-        setLoading(false);
+      beginLoading();
+      (entry.playPromise ?? element.play()).then(() => {
+        if (!element.paused && element.readyState >= 2) onPlaying();
       }).catch((error) => {
         setPlaying(false);
-        setLoading(false);
+        finishLoading();
         if (error?.name === "NotAllowedError") {
           setAutoplayBlocked(true);
           setAudioError(false);
@@ -405,19 +420,24 @@ function useGuidedAudio(src, volume, autoStart = false) {
       });
     }
     return () => {
-      element.pause();
-      element.removeEventListener("loadedmetadata", onMetadata); element.removeEventListener("timeupdate", onTime); element.removeEventListener("ended", onEnded); element.removeEventListener("error", onError);
-      element.removeAttribute("src"); element.load();
+      clearLoadingTimers();
+      element.removeEventListener("loadedmetadata", onMetadata); element.removeEventListener("timeupdate", onTime); element.removeEventListener("playing", onPlaying); element.removeEventListener("waiting", onWaiting); element.removeEventListener("stalled", onWaiting); element.removeEventListener("pause", onPause); element.removeEventListener("ended", onEnded); element.removeEventListener("error", onError);
+      guidedAudioPool.detach(entry);
     };
-  }, [src, autoStart]);
+  }, [src, autoStart, beginLoading, clearLoadingTimers, finishLoading]);
 
   useEffect(() => { if (audioRef.current) audioRef.current.volume = volume; }, [volume]);
 
   const play = () => {
-    setAudioError(false); setAutoplayBlocked(false); setLoading(true);
-    audioRef.current?.play().then(() => { setPlaying(true); setLoading(false); }).catch((error) => {
+    setAudioError(false); setAutoplayBlocked(false); beginLoading();
+    audioRef.current?.play().then(() => {
+      if (!audioRef.current?.paused && audioRef.current?.readyState >= 2) {
+        setPlaying(true);
+        finishLoading();
+      }
+    }).catch((error) => {
       setPlaying(false);
-      setLoading(false);
+      finishLoading();
       if (error?.name === "NotAllowedError") setAutoplayBlocked(true);
       else if (error?.name !== "AbortError") setAudioError(true);
     });
@@ -425,6 +445,7 @@ function useGuidedAudio(src, volume, autoStart = false) {
 
   const pause = () => {
     audioRef.current?.pause();
+    finishLoading();
     setPlaying(false);
   };
   const seekBy = (seconds) => {
@@ -434,7 +455,7 @@ function useGuidedAudio(src, volume, autoStart = false) {
     element.currentTime = next;
     setProgress(element.duration ? next / element.duration * 100 : 0);
   };
-  return { playing, play, pause, progress, duration, seekBy, audioError, autoplayBlocked, loading };
+  return { playing, play, pause, progress, duration, seekBy, audioError, autoplayBlocked, loading, preparing, slowLoading };
 }
 
 function MeditationPage() {
@@ -450,6 +471,13 @@ function MeditationPage() {
   const controlLayoutTransition = reduceMotion ? { duration: 0.01 } : { duration: 0.38, ease: [0.22, 1, 0.36, 1] };
   const affirmationLines = state.affirmations?.length ? state.affirmations : [state.affirmation];
   const affirmationIndex = Math.min(affirmationLines.length - 1, Math.floor((audio.progress / 100) * affirmationLines.length));
+  const playbackHint = audio.autoplayBlocked
+    ? "轻触开始"
+    : audio.slowLoading
+      ? "连接比平时久一些"
+      : audio.preparing
+        ? "正在准备声音"
+        : `轻触${audio.playing ? "暂停" : "继续"}`;
 
   useEffect(() => {
     if (audio.progress >= 99.8) navigate(`/completion/${state.id}`);
@@ -474,25 +502,27 @@ function MeditationPage() {
         <span>{state.title}</span>
         <span>{Math.max(1, Math.ceil((audio.duration * (1 - audio.progress / 100)) / 60))} 分钟</span>
       </div>
-      <button className="affirmation-stage" disabled={audio.loading} aria-busy={audio.loading} onClick={() => audio.playing ? audio.pause() : audio.play()} aria-label={audio.loading ? "音频正在准备" : audio.playing ? "暂停引导" : "播放引导"}>
+      <button className="affirmation-stage" disabled={audio.loading && !audio.slowLoading} aria-busy={audio.loading} onClick={() => audio.playing ? audio.pause() : audio.play()} aria-label={audio.loading ? "音频正在准备" : audio.playing ? "暂停引导" : "播放引导"}>
         <span className="affirmation-visual">
           <span className={`breath-orb ${audio.playing && settings.breathing ? "is-breathing" : ""}`} aria-hidden="true" />
           <AnimatePresence mode="wait" initial={false}>
             <motion.p
               key={`${state.id}-${affirmationIndex}`}
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 5, filter: "blur(3px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -4, filter: "blur(2px)" }}
-              transition={{ duration: reduceMotion ? 0.12 : 0.72, ease: [0.22, 1, 0.36, 1] }}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 3 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 3, transition: { duration: 1.2, ease: [0.4, 0, 0.7, 0.2] } }}
+              transition={reduceMotion
+                ? { duration: 0.12 }
+                : { opacity: { duration: 1.65, delay: 0.38, ease: [0.22, 1, 0.36, 1] }, y: { duration: 1.8, delay: 0.3, ease: [0.22, 1, 0.36, 1] } }}
               aria-live="polite"
             >{affirmationLines[affirmationIndex]}</motion.p>
           </AnimatePresence>
         </span>
       </button>
-      {audio.audioError && <div className="audio-error" role="alert"><span>声音暂时没有加载出来。</span><button onClick={audio.play}>重新尝试</button></div>}
       <div className="immersive-control-area">
+        {(audio.audioError || audio.slowLoading) && <div className="audio-recovery" role="alert"><span>{audio.audioError ? "声音暂时没有加载出来。" : "网络似乎有些慢。"}</span><span className="audio-recovery-actions"><button onClick={audio.play}>重新尝试</button><button onClick={() => navigate(-1)}>返回</button></span></div>}
         <motion.div className="playback-status" layout transition={controlLayoutTransition}>
-          <span className="tap-hint">{audio.autoplayBlocked ? "轻触开始" : `轻触${audio.playing ? "暂停" : "继续"}`}</span>
+          <span className="tap-hint" aria-live="polite">{playbackHint}</span>
           <div className="progress-track" aria-label={`播放进度 ${Math.round(audio.progress)}%`}><span style={{ width: `${audio.progress}%` }} /></div>
         </motion.div>
         <AnimatePresence initial={false}>
