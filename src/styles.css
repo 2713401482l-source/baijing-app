@@ -1048,23 +1048,30 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   flex:1;
   min-height:0;
   padding:14px 0 calc(82px + env(safe-area-inset-bottom,0px));
+  align-content:start;
+  grid-auto-rows:max-content;
+  gap:10px;
+  border-top:0;
   overflow-y:auto;
   overscroll-behavior:contain;
   scrollbar-width:none;
 }
 .records-screen .record-list::-webkit-scrollbar{display:none}
 .record-list article{
-  min-height:108px;
-  padding:12px 0;
+  min-height:96px;
+  padding:8px 8px 8px 12px;
   display:grid;
   grid-template-columns:minmax(0,1fr) auto;
   align-items:center;
   gap:8px;
+  border:1px solid color-mix(in srgb,var(--line) 72%,transparent);
+  border-radius:14px;
+  background:color-mix(in srgb,var(--surface) 46%,transparent);
 }
 .record-list-content{
   min-width:0;
   min-height:78px;
-  padding:7px 4px;
+  padding:5px 4px;
   display:grid;
   align-content:center;
   gap:6px;
@@ -1109,6 +1116,7 @@ body,#root{width:100%;height:100%;min-height:100%;overflow:hidden;background:var
   cursor:pointer;
 }
 .record-row-actions a:focus-visible,.record-row-actions button:focus-visible{color:var(--accent)}
+.record-list article:has(.record-list-content:active){border-color:color-mix(in srgb,var(--accent) 34%,var(--line));background:color-mix(in srgb,var(--surface) 68%,transparent)}
 
 .record-detail-screen{overflow-y:auto;padding-bottom:max(38px,env(safe-area-inset-bottom,0px))}
 .record-detail{padding:4px 0 36px}
